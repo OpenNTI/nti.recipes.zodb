@@ -37,7 +37,8 @@ setup(
 	namespace_packages=['nti', 'nti.recipes'],
 	install_requires=[
 		'setuptools',
-		'zc.buildout'
+		'zc.buildout',
+		'zc.recipe.deployment'
 	],
 	entry_points=entry_points
 )
