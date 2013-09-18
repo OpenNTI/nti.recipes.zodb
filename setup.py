@@ -36,6 +36,7 @@ setup(
 	package_dir={'': 'src'},
 	namespace_packages=['nti', 'nti.recipes'],
 	install_requires=[
+		'setuptools',
 		'zc.buildout'
 	],
 	entry_points=entry_points
