@@ -6,7 +6,7 @@ VERSION = '0.0.0'
 
 entry_points = {
 	"zc.buildout" : [
-		'databases = nti.recipes.relstorage.meta.Databases'
+		'databases = nti.recipes.relstorage.meta:Databases'
 	],
 }
 
@@ -17,7 +17,7 @@ setup(
     author_email = 'open-source@nextthought.com',
     description = "zc.buildout recipes for RelStorage",
     long_description = codecs.open('README.rst', encoding='utf-8').read(),
-    license = 'APACHE 2.0',
+    license = 'Proprietary',
     keywords = 'buildout relstorage',
     #url = 'https://github.com/NextThought/nti.nose_traceback_info',
     classifiers = [
