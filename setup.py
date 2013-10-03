@@ -6,19 +6,20 @@ VERSION = '0.0.0'
 
 entry_points = {
 	"zc.buildout" : [
-		'databases = nti.recipes.relstorage.meta:Databases'
+		'relstorage = nti.recipes.zodb.relstorage:Databases',
+		'zeo = nti.recipes.zodb.zeo:Databases'
 	],
 }
 
 setup(
-    name = 'nti.recipes.relstorage',
+    name = 'nti.recipes.zodb',
     version = VERSION,
     author = 'Jason Madden',
     author_email = 'open-source@nextthought.com',
-    description = "zc.buildout recipes for RelStorage",
+    description = "zc.buildout recipes for RelStorage and ZEO",
     long_description = codecs.open('README.rst', encoding='utf-8').read(),
     license = 'Proprietary',
-    keywords = 'buildout relstorage',
+    keywords = 'buildout relstorage ZEO',
     #url = 'https://github.com/NextThought/nti.nose_traceback_info',
     classifiers = [
         'Development Status :: 5 - Production/Stable',
@@ -38,7 +39,8 @@ setup(
 	install_requires=[
 		'setuptools',
 		'zc.buildout',
-		'zc.recipe.deployment'
+		'zc.recipe.deployment',
+		'zc.zodbrecipes'
 	],
 	entry_points=entry_points
 )

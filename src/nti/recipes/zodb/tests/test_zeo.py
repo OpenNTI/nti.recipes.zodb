@@ -20,14 +20,12 @@ from hamcrest import is_
 from hamcrest import has_key
 from hamcrest import has_entry
 
-import nti.tests
-
 import zc.buildout.buildout
 import zc.buildout.testing
 
 import unittest
 import os
-from ..meta import Databases
+from ..zeo import Databases
 
 class NoDefaultBuildout(zc.buildout.testing.Buildout):
 	# The testing buildout doesn't provide a way to
@@ -56,6 +54,6 @@ class TestDatabases(unittest.TestCase):
 			'sql_host': 'host',
 			'cache_servers': 'cache'
 		}
-		Databases( buildout, 'relstorages', {'storages': 'Users Users_1 Sessions'} )
+		Databases( buildout, 'zeo', {'storages': 'Users Users_1 Sessions'} )
 
 		#buildout.print_options()
