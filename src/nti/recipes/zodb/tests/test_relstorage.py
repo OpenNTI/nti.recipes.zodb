@@ -19,6 +19,7 @@ from hamcrest import assert_that
 from hamcrest import is_
 from hamcrest import has_key
 from hamcrest import has_entry
+from hamcrest import contains_string
 
 import zc.buildout.buildout
 import zc.buildout.testing
@@ -57,3 +58,5 @@ class TestDatabases(unittest.TestCase):
 		Databases( buildout, 'relstorages', {'storages': 'Users Users_1 Sessions'} )
 
 		#buildout.print_options()
+		assert_that( buildout['users_storage']['client_zcml'],
+					 contains_string('shared-blob-dir true') )

@@ -21,12 +21,18 @@ class Databases(object):
 		# can easily be extended to allow separate values
 		# in the future
 
+		# by default, relstorage assumes a shared blob
+		# directory
+		if 'shared-blob-dir' not in options:
+			options['shared-blob-dir'] = 'true'
+		shared_blob_dir = options['shared-blob-dir']
 		# Order matters
 		buildout.parse("""
 		[base_storage]
 		name = BASE
 		data_dir = ${deployment:data-directory}
 		blob_dir = ${:data_dir}/${:name}.blobs
+		shared-blob-dir = %s
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 30
@@ -44,6 +50,7 @@ class Databases(object):
 					<zlibstorage>
 						<relstorage ${:name}>
 							blob-dir ${:blob_dir}
+							shared-blob-dir ${:shared-blob-dir}
 							cache-prefix ${:name}
 							cache-servers ${:cache_servers}
 							cache-module-name ${:cache_module_name}
@@ -61,7 +68,7 @@ class Databases(object):
 							</mysql>
 						</relstorage>
 					</zlibstorage>
-				</zodb>""")
+				</zodb>""" % (shared_blob_dir,) )
 
 		storages = options['storages'].split()
 		blob_paths = []
