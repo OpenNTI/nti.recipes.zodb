@@ -24,7 +24,7 @@ class Databases(object):
 		# by default, relstorage assumes a shared blob
 		# directory
 		if 'shared-blob-dir' not in options:
-			options['shared-blob-dir'] = 'true'
+			options['shared-blob-dir'] = b'true' # options must be strings
 		shared_blob_dir = options['shared-blob-dir']
 		# Order matters
 		buildout.parse("""
