@@ -30,8 +30,9 @@ class Databases(object):
 			options['shared-blob-dir'] = b'false' # options must be strings
 		shared_blob_dir = options['shared-blob-dir']
 		# Order matters
+		base_storage_name = name + '_base_storage'
 		buildout.parse("""
-		[base_storage]
+		[%s]
 		name = BASE
 		data_dir = ${deployment:data-directory}
 		blob_dir = ${:data_dir}/${:name}.blobs
@@ -71,7 +72,7 @@ class Databases(object):
 							</mysql>
 						</relstorage>
 					</zlibstorage>
-				</zodb>""" % (shared_blob_dir,) )
+				</zodb>""" % (base_storage_name, shared_blob_dir,) )
 
 		storages = options['storages'].split()
 		blob_paths = []
@@ -79,12 +80,25 @@ class Databases(object):
 		zcml_names = []
 
 		for storage in storages:
-			part_name = storage.lower() + '_storage'
-			buildout.parse("""
+			part_name = name + '_' + storage.lower() + '_storage'
+			# Note that while it would be nice to automatically extend
+			# from this section, that leads to a recursive invocation
+			# of this recipe, which obviously fails (with weird errors
+			# about "part already exists"). So we use _opts for everything,
+			# in precedence order
+			other_bases = [base_storage_name]
+			if name + '_opts' in buildout:
+				other_bases.append( name + '_opts' )
+			if part_name + '_opts' in buildout:
+				other_bases.append( part_name + '_opts' )
+			other_bases = '\n\t\t\t\t'.join( other_bases )
+			part = """
 			[%s]
-			<= base_storage
+			<=
+				%s
 			name = %s
-			""" % ( part_name, storage ) )
+			""" % ( part_name, other_bases, storage )
+			buildout.parse(part)
 
 			blob_paths.append( "${%s:blob_dir}" % part_name )
 			zcml_names.append( "${%s:client_zcml}" % part_name )

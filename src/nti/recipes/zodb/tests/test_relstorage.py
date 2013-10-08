@@ -55,8 +55,19 @@ class TestDatabases(unittest.TestCase):
 			'sql_host': 'host',
 			'cache_servers': 'cache'
 		}
+		buildout['relstorages_opts'] = {
+			'sql_user': 'BAZ'
+		}
+		buildout['relstorages_users_storage_opts'] = {
+			'sql_user': 'FOO'
+		}
 		Databases( buildout, 'relstorages', {'storages': 'Users Users_1 Sessions'} )
 
-		#buildout.print_options()
-		assert_that( buildout['users_storage']['client_zcml'],
-					 contains_string('shared-blob-dir true') )
+		$buildout.print_options()
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string('shared-blob-dir false') )
+
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string( 'FOO' ) )
+		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
+					 contains_string( 'BAZ' ) )
