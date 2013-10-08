@@ -22,9 +22,12 @@ class Databases(object):
 		# in the future
 
 		# by default, relstorage assumes a shared blob
-		# directory
+		# directory. However, our most common use case here
+		# is not to share. While using either wrong setting
+		# in an environment is dangerous and can lead to data loss,
+		# it's slightly worse to assume shared when its not
 		if 'shared-blob-dir' not in options:
-			options['shared-blob-dir'] = b'true' # options must be strings
+			options['shared-blob-dir'] = b'false' # options must be strings
 		shared_blob_dir = options['shared-blob-dir']
 		# Order matters
 		buildout.parse("""
