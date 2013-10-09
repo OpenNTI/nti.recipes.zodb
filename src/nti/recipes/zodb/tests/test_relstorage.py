@@ -63,7 +63,7 @@ class TestDatabases(unittest.TestCase):
 		}
 		Databases( buildout, 'relstorages', {'storages': 'Users Users_1 Sessions'} )
 
-		$buildout.print_options()
+		#buildout.print_options()
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
 					 contains_string('shared-blob-dir false') )
 
