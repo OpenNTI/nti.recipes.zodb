@@ -46,6 +46,14 @@ class Databases(object):
 		sql_user = ${environment:sql_user}
 		sql_passwd = ${environment:sql_passwd}
 		sql_host = ${environment:sql_host}
+		sql_adapter = mysql
+		sql_adapter_args =
+				 db ${:sql_db}
+				 user ${:sql_user}
+				 passwd ${:sql_passwd}
+				 host ${:sql_host}
+				 ${:sql_adapter_extra_args}
+		sql_adapter_extra_args =
 		client_zcml =
 				<zodb ${:name}>
 					pool-size 2
@@ -64,12 +72,9 @@ class Databases(object):
 
 							keep-history false
 							pack-gc false
-							<mysql>
-								db ${:sql_db}
-								user ${:sql_user}
-								passwd ${:sql_passwd}
-								host ${:sql_host}
-							</mysql>
+							<${:sql_adapter}>
+								${:sql_adapter_args}
+							</${:sql_adapter}>
 						</relstorage>
 					</zlibstorage>
 				</zodb>""" % (base_storage_name, shared_blob_dir,) )
