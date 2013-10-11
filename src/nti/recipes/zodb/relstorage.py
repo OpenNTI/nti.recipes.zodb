@@ -10,6 +10,13 @@ $Id$
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
+# StringIO does BAD things with unicode literals
+# prior to 2.7.3
+import sys
+if sys.version_info < (2,7,3):
+	raise ImportError("Need at least python 2.7.3")
+
+
 logger = __import__('logging').getLogger(__name__)
 
 class Databases(object):

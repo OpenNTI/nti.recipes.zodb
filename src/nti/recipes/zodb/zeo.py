@@ -12,6 +12,13 @@ __docformat__ = "restructuredtext en"
 
 logger = __import__('logging').getLogger(__name__)
 
+# StringIO does BAD things with unicode literals
+# prior to 2.7.3
+import sys
+if sys.version_info < (2,7,3):
+	raise ImportError("Need at least python 2.7.3")
+
+
 _base_storage = """
 [base_storage]
 name = BASE
