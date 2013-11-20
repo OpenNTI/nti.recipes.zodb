@@ -18,7 +18,7 @@ logger = __import__('logging').getLogger(__name__)
 from hamcrest import assert_that
 from hamcrest import is_
 from hamcrest import has_key
-from hamcrest import has_entry
+from hamcrest import contains_string
 
 import zc.buildout.buildout
 import zc.buildout.testing
@@ -54,6 +54,10 @@ class TestDatabases(unittest.TestCase):
 			'sql_host': 'host',
 			'cache_servers': 'cache'
 		}
-		Databases( buildout, 'zeo', {'storages': 'Users Users_1 Sessions'} )
+		Databases( buildout, 'zeo', {'storages': 'Users Users_1 Sessions',
+									 'pack-gc': 'true'} )
 
 		#buildout.print_options()
+
+		assert_that( buildout['users_1_storage']['server_zcml'],
+					 contains_string( 'pack-gc true' ) )

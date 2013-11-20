@@ -26,12 +26,13 @@ number = 0
 data_dir = ${deployment:data-directory}
 blob_dir = ${:data_dir}/${:name}.blobs
 data_file = ${:data_dir}/${:name}.fs
+pack-gc = false
 server_zcml =
 	 	<serverzlibstorage ${:number}>
 			<filestorage ${:number}>
 				path ${:data_file}
 				blob-dir ${:blob_dir}
-				pack-gc false
+				pack-gc ${:pack-gc}
 			</filestorage>
 		</serverzlibstorage>
 
@@ -117,7 +118,8 @@ class Databases(object):
 			<= base_storage
 			name = %s
 			number = %d
-			""" % ( storage_part_name, storage, i ) )
+			pack-gc = %s
+			""" % ( storage_part_name, storage, i, options.get('pack-gc', 'false') ) )
 
 			client_part_name = storage.lower() + '_client'
 			client_parts.append(("""

@@ -49,6 +49,7 @@ class Databases(object):
 		commit_lock_timeout = 30
 		cache_local_mb = 200
 		poll_interval = 50
+		pack-gc = false
 		sql_db = ${:name}
 		sql_user = ${environment:sql_user}
 		sql_passwd = ${environment:sql_passwd}
@@ -78,13 +79,13 @@ class Databases(object):
 							poll-interval ${:poll_interval}
 
 							keep-history false
-							pack-gc false
+							pack-gc ${:pack-gc}
 							<${:sql_adapter}>
 								${:sql_adapter_args}
 							</${:sql_adapter}>
 						</relstorage>
 					</zlibstorage>
-				</zodb>""" % (base_storage_name, shared_blob_dir,) )
+				</zodb>""" % (base_storage_name, shared_blob_dir) )
 
 		storages = options['storages'].split()
 		blob_paths = []

@@ -56,18 +56,27 @@ class TestDatabases(unittest.TestCase):
 			'cache_servers': 'cache'
 		}
 		buildout['relstorages_opts'] = {
-			'sql_user': 'BAZ'
+			'sql_user': 'BAZ',
+			'pack-gc': 'true'
 		}
 		buildout['relstorages_users_storage_opts'] = {
-			'sql_user': 'FOO'
+			'sql_user': 'FOO',
+			'pack-gc': 'false'
 		}
-		Databases( buildout, 'relstorages', {'storages': 'Users Users_1 Sessions'} )
+		Databases( buildout, 'relstorages',
+				   {'storages': 'Users Users_1 Sessions'} )
 
-		#buildout.print_options()
+		buildout.print_options()
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
 					 contains_string('shared-blob-dir false') )
 
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
 					 contains_string( 'FOO' ) )
+
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string( 'pack-gc false' ) )
+
 		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
 					 contains_string( 'BAZ' ) )
+		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
+					 contains_string( 'pack-gc true' ) )
