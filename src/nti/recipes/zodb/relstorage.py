@@ -43,6 +43,10 @@ class Databases(object):
 		name = BASE
 		data_dir = ${deployment:data-directory}
 		blob_dir = ${:data_dir}/${:name}.blobs
+		dump_name = ${:name}
+		dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}
+		blob_dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}/blobs
+		filestorage_name = NONE
 		shared-blob-dir = %s
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
@@ -62,12 +66,8 @@ class Databases(object):
 				 host ${:sql_host}
 				 ${:sql_adapter_extra_args}
 		sql_adapter_extra_args =
-		client_zcml =
-				<zodb ${:name}>
-					pool-size 2
-					database-name ${:name}
-					cache-size 75000
-					<zlibstorage>
+		storage_zcml =
+					<zlibstorage ${:name}>
 						<relstorage ${:name}>
 							blob-dir ${:blob_dir}
 							shared-blob-dir ${:shared-blob-dir}
@@ -85,7 +85,21 @@ class Databases(object):
 							</${:sql_adapter}>
 						</relstorage>
 					</zlibstorage>
-				</zodb>""" % (base_storage_name, shared_blob_dir) )
+		client_zcml =
+				<zodb ${:name}>
+					pool-size 2
+					database-name ${:name}
+					cache-size 75000
+					${:storage_zcml}
+				</zodb>
+		filestorage_zcml =
+				<zlibstorage ${:filestorage_name}>
+					<filestorage ${:filestorage_name}>
+						path ${:dump_dir}/data.fs
+						blob-dir ${:blob_dump_dir}
+					</filestorage>
+				</zlibstorage>
+		""" % (base_storage_name, shared_blob_dir) )
 
 		storages = options['storages'].split()
 		blob_paths = []
@@ -105,17 +119,67 @@ class Databases(object):
 			if part_name + '_opts' in buildout:
 				other_bases.append( part_name + '_opts' )
 			other_bases = '\n\t\t\t\t'.join( other_bases )
-			part = """
+			part_template = """
 			[%s]
 			<=
 				%s
 			name = %s
-			""" % ( part_name, other_bases, storage )
+			"""
+			part = part_template % ( part_name, other_bases, storage )
 			buildout.parse(part)
 
 			blob_paths.append( "${%s:blob_dir}" % part_name )
+
 			zcml_names.append( "${%s:client_zcml}" % part_name )
 			zeo_uris.append( "zconfig://${zodb_conf:output}#%s" % storage.lower() )
+
+			# ZODB convert to and from files
+			src_part_name = 'zodbconvert_' + part_name + '_src'
+			dest_part_name = 'zodbconvert_' + part_name + '_destination'
+			blob_paths.append( "${%s:dump_dir}" % src_part_name )
+			blob_paths.append( "${%s:blob_dump_dir}" % dest_part_name )
+
+			to_relstorage_part_name = storage.lower() + '_to_relstorage_conf'
+			from_relstorage_part_name = storage.lower() + '_from_relstorage_conf'
+
+			zodb_convert_part_template = """
+			[%s]
+			<=
+				%s
+			name = %s
+			filestorage_name = %s
+			dump_name = %s
+			"""
+			src_part = zodb_convert_part_template % ( src_part_name,
+													  other_bases,
+													  'source', 'destination',
+													  storage.lower())
+			buildout.parse(src_part)
+
+			dest_part = zodb_convert_part_template % ( dest_part_name,
+													   other_bases,
+													   'destination', 'source',
+													   storage.lower())
+			buildout.parse(dest_part)
+			convert_template = """
+			[%s]
+			recipe = collective.recipe.template
+			output = ${deployment:etc-directory}/relstorage/%s.xml
+			input = inline:
+				%%import zc.zlibstorage
+				%%import relstorage
+
+				${%s:storage_zcml}
+				${%s:filestorage_zcml}
+			"""
+			buildout.parse( convert_template % (to_relstorage_part_name,
+												to_relstorage_part_name,
+												dest_part_name,
+												dest_part_name ))
+			buildout.parse( convert_template % (from_relstorage_part_name,
+												from_relstorage_part_name,
+												src_part_name,
+												src_part_name ))
 
 		buildout.parse("""
 		[blob_dirs]
