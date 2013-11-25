@@ -149,17 +149,20 @@ class Databases(object):
 			name = %s
 			filestorage_name = %s
 			dump_name = %s
+			sql_db = %s
 			"""
 			src_part = zodb_convert_part_template % ( src_part_name,
 													  other_bases,
 													  'source', 'destination',
-													  storage.lower())
+													  storage.lower(),
+													  storage)
 			buildout.parse(src_part)
 
 			dest_part = zodb_convert_part_template % ( dest_part_name,
 													   other_bases,
 													   'destination', 'source',
-													   storage.lower())
+													   storage.lower(),
+													   storage)
 			buildout.parse(dest_part)
 			convert_template = """
 			[%s]
