@@ -36,6 +36,17 @@ class Databases(object):
 		if 'shared-blob-dir' not in options:
 			options['shared-blob-dir'] = b'false' # options must be strings
 		shared_blob_dir = options['shared-blob-dir']
+
+		# Poll interval is extremely critical. If the memcache instance
+		# is unreliable or subject to going away, it seems that the poll
+		# interval still applies; this means that a storage could be
+		# up to that far out of date without knowing it.  In environments
+		# with a fairly high write rate, this is a crucial mistake
+		# (we still have some fairly high write rates in our chat code)
+		# which leads to conflict errors. Fortunately, DB load seems not
+		# to be an issue, so we can poll to our heart's content and
+		# set this to 0
+
 		# Order matters
 		base_storage_name = name + '_base_storage'
 		buildout.parse("""
@@ -51,8 +62,8 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 30
-		cache_local_mb = 200
-		poll_interval = 50
+		cache_local_mb = 400
+		poll_interval = 0
 		pack-gc = false
 		sql_db = ${:name}
 		sql_user = ${environment:sql_user}
@@ -87,9 +98,9 @@ class Databases(object):
 					</zlibstorage>
 		client_zcml =
 				<zodb ${:name}>
-					pool-size 2
+					pool-size 4
 					database-name ${:name}
-					cache-size 75000
+					cache-size 100000
 					${:storage_zcml}
 				</zodb>
 		filestorage_zcml =
