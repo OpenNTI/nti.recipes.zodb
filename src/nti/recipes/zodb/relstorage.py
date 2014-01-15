@@ -47,6 +47,30 @@ class Databases(object):
 		# to be an issue, so we can poll to our heart's content and
 		# set this to 0
 
+		# Also crucial is the pool-size. Each connection has resources
+		# like a memcache connection, a MySQL connection, and its
+		# in-memory cache. Normally, opening a DB and closing the
+		# connection will create a connection (if needed), then return
+		# it to the pool. However, in the case of multi-databases,
+		# when an object from a secondary database needs to be loaded,
+		# the active connection will request a connection to that
+		# database, and when the active connection is closed, that
+		# secondary connection is also closed: BUT NOT RETURNED TO THE
+		# POOL. Instead, the active (primary) connection keeps a
+		# reference to it that it will use in the future. This has the
+		# effect of driving all secondary pools based on the
+		# efficiency of the primary pool. Thus, the pool-size for
+		# everything except the primary database is essentially
+		# meaningless (if the application always begins by opening
+		# that primary database), but that pool size controls everything.
+
+		# Connections have a pointer to a new RelStorage object, and when a connection
+		# is closed, this new storage is never actually closed or cleaned up, because
+		# the connection might be reused. Instead, connections rely on
+		# reference counting/GC to clean up the relstorage object and its resources
+		# (The DB will clean up active connections in the pool, but only when it itself
+		# is closed). This could be a problem in cases of cycles.
+
 		# Order matters
 		base_storage_name = name + '_base_storage'
 		buildout.parse("""
@@ -98,7 +122,7 @@ class Databases(object):
 					</zlibstorage>
 		client_zcml =
 				<zodb ${:name}>
-					pool-size 4
+					pool-size 25
 					database-name ${:name}
 					cache-size 100000
 					${:storage_zcml}
