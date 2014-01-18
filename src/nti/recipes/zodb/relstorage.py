@@ -64,6 +64,17 @@ class Databases(object):
 		# meaningless (if the application always begins by opening
 		# that primary database), but that pool size controls everything.
 
+		# If we're doing XHR-polling, it's not unusual for one gunicorn/gevent
+		# worker to have 30 or 40 polling requests active on it an any
+		# one time. Each of those consumes a connection; if our pool size
+		# is smaller than the number of active requests, we can wind
+		# up thrashing on connections, rapidly opening and closing them.
+		# (Because closing the main connection causes it to be repushed on the pool,
+		# which triggers the pool to shrink in size if need be). Calling
+		# DB.connectionDebugInfo() can show this: connections in the pool
+		# have 'opened' of None, while those in use have a timestamp and the length
+		# of time it's been open.
+
 		# Connections have a pointer to a new RelStorage object, and when a connection
 		# is closed, this new storage is never actually closed or cleaned up, because
 		# the connection might be reused. Instead, connections rely on
@@ -122,7 +133,7 @@ class Databases(object):
 					</zlibstorage>
 		client_zcml =
 				<zodb ${:name}>
-					pool-size 25
+					pool-size 80
 					database-name ${:name}
 					cache-size 100000
 					${:storage_zcml}
