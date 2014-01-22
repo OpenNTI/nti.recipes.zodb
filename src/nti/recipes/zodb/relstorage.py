@@ -45,7 +45,7 @@ class Databases(object):
 		# (we still have some fairly high write rates in our chat code)
 		# which leads to conflict errors. Fortunately, DB load seems not
 		# to be an issue, so we can poll to our heart's content and
-		# set this to 0
+		# set this to 0...although this may eat up mysql connections?
 
 		# Also crucial is the pool-size. Each connection has resources
 		# like a memcache connection, a MySQL connection, and its
@@ -97,8 +97,8 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 30
-		cache_local_mb = 400
-		poll_interval = 0
+		cache_local_mb = 800
+		poll_interval = 60
 		pack-gc = false
 		sql_db = ${:name}
 		sql_user = ${environment:sql_user}
@@ -133,7 +133,7 @@ class Databases(object):
 					</zlibstorage>
 		client_zcml =
 				<zodb ${:name}>
-					pool-size 80
+					pool-size 60
 					database-name ${:name}
 					cache-size 100000
 					${:storage_zcml}
