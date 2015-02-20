@@ -42,13 +42,13 @@ _base_client = """
 [base_client]
 <= base_storage
 pool_size = 7
-cache_size = 75000
+cache-size = 75000
 name = BASE
 client_zcml =
 		<zodb ${:name}>
 			pool-size ${:pool_size}
 			database-name ${:name}
-			cache-size ${:cache_size}
+			cache-size ${:cache-size}
 			<zlibstorage>
 				<zeoclient>
 					server ${base_zeo:clientPipe}
