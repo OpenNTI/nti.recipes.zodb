@@ -121,7 +121,7 @@ class Databases(object):
 							cache-servers ${:cache_servers}
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
-							cache-local-mb ${:cache_local_mb}
+							cache-local-mb ${:cache-local-mb}
 							poll-interval ${:poll_interval}
 
 							keep-history false
@@ -135,7 +135,7 @@ class Databases(object):
 				<zodb ${:name}>
 					pool-size 60
 					database-name ${:name}
-					cache-size 100000
+					cache-size ${:cache-size}
 					${:storage_zcml}
 				</zodb>
 		filestorage_zcml =
