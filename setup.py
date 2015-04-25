@@ -1,6 +1,5 @@
-#!/usr/bin/env python
-from setuptools import setup, find_packages
 import codecs
+from setuptools import setup, find_packages
 
 VERSION = '0.0.0'
 
