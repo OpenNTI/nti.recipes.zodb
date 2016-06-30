@@ -46,6 +46,8 @@ class Databases(object):
 		# which leads to conflict errors. Fortunately, DB load seems not
 		# to be an issue, so we can poll to our heart's content and
 		# set this to 0...although this may eat up mysql connections?
+		# UPDATE: 7.1.2016 Remove poll-interval to use default specified
+		# by relstorage (see https://github.com/zodb/relstorage/issues/87).
 
 		# Also crucial is the pool-size. Each connection has resources
 		# like a memcache connection, a MySQL connection, and its
@@ -99,7 +101,6 @@ class Databases(object):
 		commit_lock_timeout = 60
 		cache-local-mb = 800
 		cache-size = 100000
-		poll_interval = 60
 		pack-gc = false
 		sql_db = ${:name}
 		sql_user = ${environment:sql_user}
@@ -123,7 +124,6 @@ class Databases(object):
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
-							poll-interval ${:poll_interval}
 
 							keep-history false
 							pack-gc ${:pack-gc}
