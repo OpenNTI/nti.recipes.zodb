@@ -119,6 +119,7 @@ class Databases(object):
 					<zlibstorage ${:name}>
 						<relstorage ${:name}>
 							blob-dir ${:blob_dir}
+							cache-local-dir ${:cache_local_dir}
 							shared-blob-dir ${:shared-blob-dir}
 							cache-prefix ${:name}
 							cache-servers ${:cache_servers}
@@ -177,7 +178,7 @@ class Databases(object):
 			buildout.parse(part)
 
 			blob_paths.append( "${%s:blob_dir}" % part_name )
-			# blob_paths.append( "${%s:cache_local_dir}" % part_name )
+			blob_paths.append( "${%s:cache_local_dir}" % part_name )
 			
 			zcml_names.append( "${%s:client_zcml}" % part_name )
 			zeo_uris.append( "zconfig://${zodb_conf:output}#%s" % storage.lower() )
