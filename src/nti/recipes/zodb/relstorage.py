@@ -4,7 +4,7 @@
 A meta-recipe to create multiple
 relstorage connections in a Dataserver buildout.
 
-$Id$
+.. $Id$
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division

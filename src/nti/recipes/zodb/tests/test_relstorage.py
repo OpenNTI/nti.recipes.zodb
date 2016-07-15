@@ -1,32 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""
-
-
-$Id$
-"""
 
 from __future__ import print_function, unicode_literals, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-logger = __import__('logging').getLogger(__name__)
+# disable: accessing protected members, too many methods
+# pylint: disable=W0212,R0904
 
-#disable: accessing protected members, too many methods
-#pylint: disable=W0212,R0904
-
-
-from hamcrest import assert_that
 from hamcrest import is_
 from hamcrest import has_key
 from hamcrest import has_entry
+from hamcrest import assert_that
 from hamcrest import contains_string
 
 import zc.buildout.buildout
+
 import zc.buildout.testing
 
-import unittest
 import os
-from ..relstorage import Databases
+import unittest
+
+from nti.recipes.zodb.relstorage import Databases
 
 class NoDefaultBuildout(zc.buildout.testing.Buildout):
 	# The testing buildout doesn't provide a way to

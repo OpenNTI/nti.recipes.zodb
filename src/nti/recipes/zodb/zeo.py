@@ -4,7 +4,7 @@
 A meta recipe to create configuration for ZEO clients and servers
 supporting multiple storages.
 
-$Id$
+.. $Id$
 """
 
 from __future__ import print_function, unicode_literals, absolute_import, division
@@ -204,9 +204,6 @@ class Databases(object):
 			%s
 		mode = 0700
 		""" % '\n\t\t\t'.join( blob_paths ) )
-
-
-
 
 	def install(self):
 		return ()
