@@ -119,7 +119,6 @@ class Databases(object):
 					<zlibstorage ${:name}>
 						<relstorage ${:name}>
 							blob-dir ${:blob_dir}
-							cache-local-dir ${:cache_local_dir}
 							shared-blob-dir ${:shared-blob-dir}
 							cache-prefix ${:name}
 							cache-servers ${:cache_servers}
