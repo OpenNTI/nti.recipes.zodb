@@ -100,7 +100,7 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 60
-		cache-local-mb = 800
+		cache-local-mb = 400
 		cache-size = 100000
 		pack-gc = false
 		sql_db = ${:name}
@@ -125,7 +125,6 @@ class Databases(object):
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
-
 							keep-history false
 							pack-gc ${:pack-gc}
 							<${:sql_adapter}>
@@ -178,7 +177,7 @@ class Databases(object):
 
 			blob_paths.append( "${%s:blob_dir}" % part_name )
 			blob_paths.append( "${%s:cache_local_dir}" % part_name )
-			
+
 			zcml_names.append( "${%s:client_zcml}" % part_name )
 			zeo_uris.append( "zconfig://${zodb_conf:output}#%s" % storage.lower() )
 
