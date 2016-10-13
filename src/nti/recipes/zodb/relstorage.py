@@ -100,7 +100,7 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 60
-		cache-local-mb = 400
+		cache-local-mb = 350
 		cache-size = 100000
 		pack-gc = false
 		sql_db = ${:name}
