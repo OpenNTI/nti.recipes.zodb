@@ -100,6 +100,7 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 60
+		cache_local_dir_count = 20
 		cache-local-mb = 350
 		cache-size = 100000
 		pack-gc = false
@@ -125,6 +126,8 @@ class Databases(object):
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
+							cache-local-dir ${:cache_local_dir}
+							cache-local-dir-count ${:cache_local_dir_count}
 							keep-history false
 							pack-gc ${:pack-gc}
 							<${:sql_adapter}>
