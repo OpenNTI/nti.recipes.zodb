@@ -126,7 +126,6 @@ class Databases(object):
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
-							cache-local-dir ${:cache_local_dir}
 							cache-local-dir-count ${:cache_local_dir_count}
 							keep-history false
 							pack-gc ${:pack-gc}
