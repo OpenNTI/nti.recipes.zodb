@@ -101,7 +101,7 @@ class Databases(object):
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 60
 		cache_local_dir_count = 20
-		cache-local-mb = 350
+		cache-local-mb = 300
 		cache-size = 100000
 		pack-gc = false
 		sql_db = ${:name}
