@@ -37,12 +37,6 @@ class Databases(object):
 			options['shared-blob-dir'] = b'false' # options must be strings
 		shared_blob_dir = options['shared-blob-dir']
 
-		if 		'enable-persistent-cache' in options \
-			and 'cache-local-dir' not in options:
-			options['cache-local-dir'] = b'${:data_dir}/${:name}.cache'
-		cache_local_dir = options['cache-local-dir']
-		cache_local_mb = options['cache-local-mb']
-		cache_local_dir_count = options['cache-local-dir-count']
 		# Poll interval is extremely critical. If the memcache instance
 		# is unreliable or subject to going away, it seems that the poll
 		# interval still applies; this means that a storage could be
@@ -97,6 +91,7 @@ class Databases(object):
 		name = BASE
 		data_dir = ${deployment:data-directory}
 		blob_dir = ${:data_dir}/${:name}.blobs
+		cache_local_dir = ${:data_dir}/${:name}.cache
 		dump_name = ${:name}
 		dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}
 		blob_dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}/blobs
@@ -105,10 +100,9 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 60
+		cache_local_dir_count = 20
+		cache-local-mb = 300
 		cache-size = 100000
-		cache-local-dir = %s
-		cache-local-mb = %s
-		cache-local-dir-count = %s
 		pack-gc = false
 		sql_db = ${:name}
 		sql_user = ${environment:sql_user}
@@ -132,8 +126,7 @@ class Databases(object):
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
-							cache-local-dir ${:cache-local-dir}
-							cache-local-dir-count ${:cache-local-dir-count}
+							cache-local-dir-count ${:cache_local_dir_count}
 							keep-history false
 							pack-gc ${:pack-gc}
 							<${:sql_adapter}>
@@ -155,9 +148,8 @@ class Databases(object):
 						blob-dir ${:blob_dump_dir}
 					</filestorage>
 				</zlibstorage>
-		""" % (base_storage_name, shared_blob_dir,
-			   cache_local_dir, cache_local_mb,
-			   cache_local_dir_count) )
+		""" % (base_storage_name, shared_blob_dir) )
+
 		storages = options['storages'].split()
 		blob_paths = []
 		zeo_uris = []
@@ -186,7 +178,7 @@ class Databases(object):
 			buildout.parse(part)
 
 			blob_paths.append( "${%s:blob_dir}" % part_name )
-			blob_paths.append( "${%s:cache-local-dir}" % part_name )
+			blob_paths.append( "${%s:cache_local_dir}" % part_name )
 
 			zcml_names.append( "${%s:client_zcml}" % part_name )
 			zeo_uris.append( "zconfig://${zodb_conf:output}#%s" % storage.lower() )
