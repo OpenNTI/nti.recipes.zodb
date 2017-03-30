@@ -75,3 +75,12 @@ class TestDatabases(unittest.TestCase):
 					 contains_string( 'BAZ' ) )
 		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
 					 contains_string( 'pack-gc true' ) )
+
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string('cache-local-dir /data/Users.cache') )
+
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string('cache-local-dir-count 20') )
+
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string('cache-local-mb 300') )
