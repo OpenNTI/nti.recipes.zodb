@@ -58,7 +58,8 @@ class TestDatabases(unittest.TestCase):
 			'pack-gc': 'false'
 		}
 		Databases( buildout, 'relstorages',
-				   {'storages': 'Users Users_1 Sessions'} )
+				   {'storages': 'Users Users_1 Sessions',
+				    'enable-persistent-cache': 'true'} )
 
 		buildout.print_options()
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
