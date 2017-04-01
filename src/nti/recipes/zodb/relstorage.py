@@ -37,6 +37,17 @@ class Databases(object):
 			options['shared-blob-dir'] = b'false' # options must be strings
 		shared_blob_dir = options['shared-blob-dir']
 
+		cache_local_dir = ''
+		if options.get('enable-persistent-cache', '').lower() == 'true':
+			# Do not store this 'cache-local-dir' in the relstorage options.
+			# We'll intermittently have buildout issues when writing this
+			# to the installed.cfg while looking up the storage refs. We
+			# avoid taking any user-defined values since it might be
+			# confusing to have one (count limited) directory for all storages.
+			cache_local_dir = b'${:data_dir}/${:name}.cache'
+		cache_local_mb = options.get('cache-local-mb', '300')
+		cache_local_dir_count = options.get('cache-local-dir-count', '20')
+
 		# Poll interval is extremely critical. If the memcache instance
 		# is unreliable or subject to going away, it seems that the poll
 		# interval still applies; this means that a storage could be
@@ -91,7 +102,6 @@ class Databases(object):
 		name = BASE
 		data_dir = ${deployment:data-directory}
 		blob_dir = ${:data_dir}/${:name}.blobs
-		cache_local_dir = ${:data_dir}/${:name}.cache
 		dump_name = ${:name}
 		dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}
 		blob_dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}/blobs
@@ -100,9 +110,10 @@ class Databases(object):
 		cache_module_name = memcache
 		cache_servers = ${environment:cache_servers}
 		commit_lock_timeout = 60
-		cache_local_dir_count = 20
-		cache-local-mb = 300
 		cache-size = 100000
+		cache-local-dir = %s
+		cache-local-mb = %s
+		cache-local-dir-count = %s
 		pack-gc = false
 		sql_db = ${:name}
 		sql_user = ${environment:sql_user}
@@ -126,7 +137,8 @@ class Databases(object):
 							cache-module-name ${:cache_module_name}
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
-							cache-local-dir-count ${:cache_local_dir_count}
+							cache-local-dir ${:cache-local-dir}
+							cache-local-dir-count ${:cache-local-dir-count}
 							keep-history false
 							pack-gc ${:pack-gc}
 							<${:sql_adapter}>
@@ -148,13 +160,13 @@ class Databases(object):
 						blob-dir ${:blob_dump_dir}
 					</filestorage>
 				</zlibstorage>
-		""" % (base_storage_name, shared_blob_dir) )
-
+		""" % (base_storage_name, shared_blob_dir,
+			   cache_local_dir, cache_local_mb,
+			   cache_local_dir_count) )
 		storages = options['storages'].split()
 		blob_paths = []
 		zeo_uris = []
 		zcml_names = []
-
 		for storage in storages:
 			part_name = name + '_' + storage.lower() + '_storage'
 			# Note that while it would be nice to automatically extend
@@ -178,7 +190,7 @@ class Databases(object):
 			buildout.parse(part)
 
 			blob_paths.append( "${%s:blob_dir}" % part_name )
-			blob_paths.append( "${%s:cache_local_dir}" % part_name )
+			blob_paths.append( "${%s:cache-local-dir}" % part_name )
 
 			zcml_names.append( "${%s:client_zcml}" % part_name )
 			zeo_uris.append( "zconfig://${zodb_conf:output}#%s" % storage.lower() )
@@ -233,7 +245,6 @@ class Databases(object):
 												from_relstorage_part_name,
 												src_part_name,
 												src_part_name ))
-
 		buildout.parse("""
 		[blob_dirs]
 		recipe = z3c.recipe.mkdir
