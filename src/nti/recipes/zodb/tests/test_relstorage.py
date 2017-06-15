@@ -34,10 +34,10 @@ class TestDatabases(unittest.TestCase):
 
 	def test_parse(self):
 		buildout = NoDefaultBuildout()
-		buildout_dir = buildout['buildout']['directory']
 		buildout['deployment'] = {
 			'etc-directory': '/etc',
-			'data-directory': '/data'
+			'data-directory': '/data',
+			'cache-directory': '/caches'
 		}
 		buildout['environment'] = {
 			'sql_user': 'user',
@@ -73,7 +73,7 @@ class TestDatabases(unittest.TestCase):
 					 contains_string( 'pack-gc true' ) )
 
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-dir %s/data_cache/Users.cache' % buildout_dir) )
+					 contains_string('cache-local-dir /caches/data_cache/Users.cache') )
 
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
 					 contains_string('cache-local-dir-count 20') )

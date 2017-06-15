@@ -44,7 +44,7 @@ class Databases(object):
 			# to the installed.cfg while looking up the storage refs. We
 			# avoid taking any user-defined values since it might be
 			# confusing to have one (count limited) directory for all storages.
-			cache_local_dir = b'${buildout:directory}/data_cache/${:name}.cache'
+			cache_local_dir = b'${deployment:cache-directory}/data_cache/${:name}.cache'
 		cache_local_mb = options.get('cache-local-mb', '300')
 		cache_local_dir_count = options.get('cache-local-dir-count', '20')
 
