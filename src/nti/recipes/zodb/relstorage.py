@@ -22,11 +22,18 @@ logger = __import__('logging').getLogger(__name__)
 class Databases(object):
 
 	def __init__(self, buildout, name, options ):
+		# Get the 'environment' block from buildout if it exists. This is for
+		# combatibility with existing buildouts.
+		environment = buildout.get('environment', {})
+
 		# The initial use case has the same SQL
 		# database, SQL user, cache servers,
 		# etc, for all connections. The recipe
 		# can easily be extended to allow separate values
 		# in the future
+		sql_user = options.get('sql_user') or environment.get('sql_user')
+		sql_passwd = options.get('sql_passwd') or environment.get('sql_passwd')
+		sql_host = options.get('sql_host') or environment.get('sql_host')
 
 		# by default, relstorage assumes a shared blob
 		# directory. However, our most common use case here
@@ -59,6 +66,20 @@ class Databases(object):
 		# set this to 0...although this may eat up mysql connections?
 		# UPDATE: 7.1.2016 Remove poll-interval to use default specified
 		# by relstorage (see https://github.com/zodb/relstorage/issues/87).
+
+		# Utilizing the built in memcache capabilites is not beneficial in all
+		# cases. If the recipe option 'cache_servers' is empty or not defined,
+		# the relstorage config options 'cache_module_name' and
+		# 'cache_module_name' will be omitted from the generated config.
+		cache_servers = options.get('cache_servers') or environment.get('cache_servers', '')
+		if cache_servers.strip() != '':
+			cache_config = """cache_module_name = memcache
+		cache_servers = %s""" % (cache_servers.strip(),)
+			remote_cache_config = """cache-servers ${:cache_servers}
+							cache-module-name ${:cache_module_name}"""
+		else:
+			cache_config = """cache_module_name = memcache"""
+			remote_cache_config = """cache-module-name ${:cache_module_name}"""
 
 		# Also crucial is the pool-size. Each connection has resources
 		# like a memcache connection, a MySQL connection, and its
@@ -107,8 +128,7 @@ class Databases(object):
 		blob_dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}/blobs
 		filestorage_name = NONE
 		shared-blob-dir = %s
-		cache_module_name = memcache
-		cache_servers = ${environment:cache_servers}
+		%s
 		commit_lock_timeout = 60
 		cache-size = 100000
 		cache-local-dir = %s
@@ -116,9 +136,9 @@ class Databases(object):
 		cache-local-dir-count = %s
 		pack-gc = false
 		sql_db = ${:name}
-		sql_user = ${environment:sql_user}
-		sql_passwd = ${environment:sql_passwd}
-		sql_host = ${environment:sql_host}
+		sql_user = %s
+		sql_passwd = %s
+		sql_host = %s
 		sql_adapter = mysql
 		sql_adapter_args =
 				 db ${:sql_db}
@@ -133,8 +153,7 @@ class Databases(object):
 							blob-dir ${:blob_dir}
 							shared-blob-dir ${:shared-blob-dir}
 							cache-prefix ${:name}
-							cache-servers ${:cache_servers}
-							cache-module-name ${:cache_module_name}
+							%s
 							commit-lock-timeout ${:commit_lock_timeout}
 							cache-local-mb ${:cache-local-mb}
 							cache-local-dir ${:cache-local-dir}
@@ -160,9 +179,9 @@ class Databases(object):
 						blob-dir ${:blob_dump_dir}
 					</filestorage>
 				</zlibstorage>
-		""" % (base_storage_name, shared_blob_dir,
-			   cache_local_dir, cache_local_mb,
-			   cache_local_dir_count) )
+		""" % (base_storage_name, shared_blob_dir, cache_config,
+			   cache_local_dir, cache_local_mb, cache_local_dir_count,
+			   sql_user, sql_passwd, sql_host, remote_cache_config) )
 		storages = options['storages'].split()
 		blob_paths = []
 		zeo_uris = []
