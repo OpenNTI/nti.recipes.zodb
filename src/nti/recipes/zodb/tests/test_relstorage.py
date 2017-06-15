@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function, unicode_literals, absolute_import, division
+from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
 # disable: accessing protected members, too many methods
 # pylint: disable=W0212,R0904
 
-from hamcrest import is_
-from hamcrest import has_key
-from hamcrest import has_entry
 from hamcrest import assert_that
 from hamcrest import contains_string
 
@@ -36,9 +33,8 @@ class NoDefaultBuildout(zc.buildout.testing.Buildout):
 class TestDatabases(unittest.TestCase):
 
 	def test_parse(self):
-		# No verification, just sees if it runs
-
 		buildout = NoDefaultBuildout()
+		buildout_dir = buildout['buildout']['directory']
 		buildout['deployment'] = {
 			'etc-directory': '/etc',
 			'data-directory': '/data'
@@ -77,7 +73,7 @@ class TestDatabases(unittest.TestCase):
 					 contains_string( 'pack-gc true' ) )
 
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-dir /data/Users.cache') )
+					 contains_string('cache-local-dir %s/data_cache/Users.cache' % buildout_dir) )
 
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
 					 contains_string('cache-local-dir-count 20') )
