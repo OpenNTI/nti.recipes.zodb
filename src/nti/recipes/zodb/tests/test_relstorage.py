@@ -31,29 +31,34 @@ class NoDefaultBuildout(zc.buildout.testing.Buildout):
 			[('buildout', 'directory', os.getcwd())],
 			user_defaults=False)
 
+def setup_buildout_environment():
+	buildout = NoDefaultBuildout()
+	buildout['deployment'] = {
+		'etc-directory': '/etc',
+		'data-directory': '/data',
+		'cache-directory': '/caches'
+	}
+	buildout['relstorages_opts'] = {
+		'sql_user': 'BAZ',
+		'pack-gc': 'true'
+	}
+	buildout['relstorages_users_storage_opts'] = {
+		'sql_user': 'FOO',
+		'pack-gc': 'false'
+	}
+	return buildout
+
 class TestDatabases(unittest.TestCase):
 
 	def test_parse(self):
-		buildout = NoDefaultBuildout()
-		buildout['deployment'] = {
-			'etc-directory': '/etc',
-			'data-directory': '/data',
-			'cache-directory': '/caches'
-		}
+		buildout = setup_buildout_environment()
 		buildout['environment'] = {
 			'sql_user': 'user',
 			'sql_passwd': 'passwd',
 			'sql_host': 'host',
 			'cache_servers': 'cache'
 		}
-		buildout['relstorages_opts'] = {
-			'sql_user': 'BAZ',
-			'pack-gc': 'true'
-		}
-		buildout['relstorages_users_storage_opts'] = {
-			'sql_user': 'FOO',
-			'pack-gc': 'false'
-		}
+
 		Databases( buildout, 'relstorages',
 				   {'storages': 'Users Users_1 Sessions',
 				    'enable-persistent-cache': 'true'} )
@@ -90,20 +95,8 @@ class TestDatabasesNoEnvironment(unittest.TestCase):
 	def test_parse(self):
 		# No verification, just sees if it runs
 
-		buildout = NoDefaultBuildout()
-		buildout['deployment'] = {
-			'etc-directory': '/etc',
-			'data-directory': '/data',
-			'cache-directory': '/caches'
-		}
-		buildout['relstorages_opts'] = {
-			'sql_user': 'BAZ',
-			'pack-gc': 'true'
-		}
-		buildout['relstorages_users_storage_opts'] = {
-			'sql_user': 'FOO',
-			'pack-gc': 'false'
-		}
+		buildout = setup_buildout_environment()
+
 		Databases( buildout, 'relstorages',
 				   {'storages': 'Users Users_1 Sessions',
 				    'sql_user': 'user',
@@ -144,20 +137,8 @@ class TestDatabasesNoSecondaryCache(unittest.TestCase):
 	def test_parse(self):
 		# No verification, just sees if it runs
 
-		buildout = NoDefaultBuildout()
-		buildout['deployment'] = {
-			'etc-directory': '/etc',
-			'data-directory': '/data',
-			'cache-directory': '/caches'
-		}
-		buildout['relstorages_opts'] = {
-			'sql_user': 'BAZ',
-			'pack-gc': 'true'
-		}
-		buildout['relstorages_users_storage_opts'] = {
-			'sql_user': 'FOO',
-			'pack-gc': 'false'
-		}
+		buildout = setup_buildout_environment()
+
 		Databases( buildout, 'relstorages',
 				   {'storages': 'Users Users_1 Sessions',
 				    'sql_user': 'user',
@@ -174,25 +155,13 @@ class TestDatabasesNoSecondaryCacheLegacy(unittest.TestCase):
 	def test_parse(self):
 		# No verification, just sees if it runs
 
-		buildout = NoDefaultBuildout()
-		buildout['deployment'] = {
-			'etc-directory': '/etc',
-			'data-directory': '/data',
-			'cache-directory': '/caches'
-		}
+		buildout = setup_buildout_environment()
 		buildout['environment'] = {
 			'sql_user': 'user',
 			'sql_passwd': 'passwd',
 			'sql_host': 'host'
 		}
-		buildout['relstorages_opts'] = {
-			'sql_user': 'BAZ',
-			'pack-gc': 'true'
-		}
-		buildout['relstorages_users_storage_opts'] = {
-			'sql_user': 'FOO',
-			'pack-gc': 'false'
-		}
+
 		Databases( buildout, 'relstorages',
 				   {'storages': 'Users Users_1 Sessions',
 				    'enable-persistent-cache': 'true'} )
