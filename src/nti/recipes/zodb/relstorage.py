@@ -72,7 +72,7 @@ class Databases(object):
 		# the relstorage config options 'cache_module_name' and
 		# 'cache_module_name' will be omitted from the generated config.
 		cache_servers = options.get('cache_servers') or environment.get('cache_servers', '')
-		if cache_servers.strip() != '':
+		if cache_servers.strip():
 			cache_config = """cache_module_name = memcache
 		cache_servers = %s""" % (cache_servers.strip(),)
 			remote_cache_config = """cache-servers ${:cache_servers}
