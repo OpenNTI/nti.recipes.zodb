@@ -78,8 +78,8 @@ class Databases(object):
 			remote_cache_config = """cache-servers ${:cache_servers}
 							cache-module-name ${:cache_module_name}"""
 		else:
-			cache_config = """cache_module_name = memcache"""
-			remote_cache_config = """cache-module-name ${:cache_module_name}"""
+			cache_config = ''
+			remote_cache_config = ''
 
 		# Also crucial is the pool-size. Each connection has resources
 		# like a memcache connection, a MySQL connection, and its
