@@ -73,16 +73,16 @@ class Databases(object):
 		# the relstorage config options 'cache_module_name' and
 		# 'cache_module_name' will be omitted from the generated config.
 		cache_servers = options.get('cache_servers') or environment.get('cache_servers', '')
-		if cache_servers.strip():
-			cache_config = '\n\t\t'.join(textwrap.dedent("""
-				cache_module_name = memcache
-				cache_servers = %s
-				""" % (cache_servers.strip(),)).splitlines())
-			remote_cache_config = '\n\t\t\t\t\t\t\t'.join(textwrap.dedent("""
-				cache-servers ${:cache_servers}
-				cache-module-name ${:cache_module_name}
-				""").splitlines())
-		else:
+		cache_config = '\n\t\t'.join(textwrap.dedent("""
+			cache_module_name = memcache
+			cache_servers = %s
+			""" % (cache_servers.strip(),)).splitlines())
+		remote_cache_config = '\n\t\t\t\t\t\t\t'.join(textwrap.dedent("""
+			cache-servers ${:cache_servers}
+			cache-module-name ${:cache_module_name}
+			""").splitlines())
+
+		if not cache_servers.strip():
 			cache_config = ''
 			remote_cache_config = ''
 
