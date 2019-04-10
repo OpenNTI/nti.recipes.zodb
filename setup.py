@@ -10,6 +10,10 @@ entry_points = {
 	],
 }
 
+TESTS_REQUIRE = [
+    'PyHamcrest'
+]
+
 setup(
 	name = 'nti.recipes.zodb',
 	version = VERSION,
@@ -33,6 +37,7 @@ setup(
 	],
 	packages=find_packages('src'),
 	package_dir={'': 'src'},
+	tests_require=TESTS_REQUIRE,
 	namespace_packages=['nti', 'nti.recipes'],
 	install_requires=[
 		'setuptools',
@@ -40,5 +45,8 @@ setup(
 		'zc.recipe.deployment',
 		'zc.zodbrecipes'
 	],
+	extras_require={
+		'test': TESTS_REQUIRE
+	},
 	entry_points=entry_points
 )
