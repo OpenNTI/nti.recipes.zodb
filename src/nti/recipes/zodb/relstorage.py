@@ -55,6 +55,7 @@ class Databases(object):
 			cache_local_dir = b'${deployment:cache-directory}/data_cache/${:name}.cache'
 		cache_local_mb = options.get('cache-local-mb', '300')
 		cache_local_dir_count = options.get('cache-local-dir-count', '20')
+		pack_gc = options.get('pack-gc', 'false')
 
 		# Poll interval is extremely critical. If the memcache instance
 		# is unreliable or subject to going away, it seems that the poll
@@ -139,7 +140,7 @@ class Databases(object):
 		cache-local-dir = %s
 		cache-local-mb = %s
 		cache-local-dir-count = %s
-		pack-gc = false
+		pack-gc = %s
 		sql_db = ${:name}
 		sql_user = %s
 		sql_passwd = %s
@@ -186,7 +187,7 @@ class Databases(object):
 				</zlibstorage>
 		""" % (base_storage_name, shared_blob_dir, cache_config,
 			   cache_local_dir, cache_local_mb, cache_local_dir_count,
-			   sql_user, sql_passwd, sql_host, remote_cache_config) )
+			   pack_gc, sql_user, sql_passwd, sql_host, remote_cache_config) )
 		storages = options['storages'].split()
 		blob_paths = []
 		zeo_uris = []
