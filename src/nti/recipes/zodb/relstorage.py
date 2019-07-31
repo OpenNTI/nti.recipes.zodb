@@ -55,7 +55,7 @@ class Databases(object):
 			cache_local_dir = b'${deployment:cache-directory}/data_cache/${:name}.cache'
 		cache_local_mb = options.get('cache-local-mb', '300')
 		cache_local_dir_count = options.get('cache-local-dir-count', '20')
-		blob_cache_size = options.get('blob-cache-size', '5gb')
+		blob_cache_size = options.get('blob-cache-size', '')
 		pack_gc = options.get('pack-gc', 'false')
 
 		# Poll interval is extremely critical. If the memcache instance
