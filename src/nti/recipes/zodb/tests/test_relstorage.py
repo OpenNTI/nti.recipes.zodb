@@ -102,6 +102,7 @@ class TestDatabasesNoEnvironment(unittest.TestCase):
 				    'sql_user': 'user',
 				    'sql_passwd': 'passwd',
 				    'sql_host': 'host',
+				    'relstorage-name-prefix': 'zzz',
 				    'cache_servers': 'cache',
 				    'enable-persistent-cache': 'true'} )
 
@@ -131,6 +132,9 @@ class TestDatabasesNoEnvironment(unittest.TestCase):
 
 		assert_that( buildout['relstorages_users_storage']['client_zcml'],
 					 contains_string('cache-servers cache') )
+
+		assert_that( buildout['relstorages_users_storage']['client_zcml'],
+					 contains_string('name zzzUsers') )
 
 class TestDatabasesNoSecondaryCache(unittest.TestCase):
 

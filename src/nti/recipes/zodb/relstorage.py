@@ -26,6 +26,7 @@ class Databases(object):
 		# Get the 'environment' block from buildout if it exists. This is for
 		# combatibility with existing buildouts.
 		environment = buildout.get('environment', {})
+		relstorage_name_prefix = options.get('relstorage-name-prefix', '')
 
 		# The initial use case has the same SQL
 		# database, SQL user, cache servers,
@@ -135,6 +136,7 @@ class Databases(object):
 		blob_dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}/blobs
 		filestorage_name = NONE
 		shared-blob-dir = %s
+		relstorage-name-prefix = %s
 		%s
 		commit_lock_timeout = 60
 		cache-size = 100000
@@ -167,6 +169,7 @@ class Databases(object):
 							cache-local-dir ${:cache-local-dir}
 							cache-local-dir-count ${:cache-local-dir-count}
 							blob-cache-size ${:blob-cache-size}
+							name ${:relstorage-name-prefix}${:name}
 							keep-history false
 							pack-gc ${:pack-gc}
 							<${:sql_adapter}>
@@ -188,7 +191,7 @@ class Databases(object):
 						blob-dir ${:blob_dump_dir}
 					</filestorage>
 				</zlibstorage>
-		""" % (base_storage_name, shared_blob_dir, cache_config,
+		""" % (base_storage_name, shared_blob_dir, relstorage_name_prefix, cache_config,
 			   cache_local_dir, cache_local_mb, cache_local_dir_count,
 			   blob_cache_size, pack_gc, sql_user, sql_passwd, sql_host, remote_cache_config) )
 		storages = options['storages'].split()
