@@ -1,0 +1,6 @@
+include *.rst
+include .coveragerc
+include INSTALL
+include LICENSE
+include TODO
+include tox.ini
