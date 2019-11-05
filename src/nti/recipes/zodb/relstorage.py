@@ -4,11 +4,11 @@
 A meta-recipe to create multiple
 relstorage connections in a Dataserver buildout.
 
-.. $Id$
 """
 
-from __future__ import print_function, unicode_literals, absolute_import, division
-__docformat__ = "restructuredtext en"
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import division
 
 import textwrap
 
@@ -38,7 +38,7 @@ class Databases(object):
         # in an environment is dangerous and can lead to data loss,
         # it's slightly worse to assume shared when its not
         if 'shared-blob-dir' not in options:
-            options['shared-blob-dir'] = b'false' # options must be strings
+            options['shared-blob-dir'] = 'false'
         shared_blob_dir = options['shared-blob-dir']
 
         cache_local_dir = ''
@@ -48,7 +48,7 @@ class Databases(object):
             # to the installed.cfg while looking up the storage refs. We
             # avoid taking any user-defined values since it might be
             # confusing to have one (count limited) directory for all storages.
-            cache_local_dir = b'${deployment:cache-directory}/data_cache/${:name}.cache'
+            cache_local_dir = '${deployment:cache-directory}/data_cache/${:name}.cache'
         cache_local_mb = options.get('cache-local-mb', '300')
         cache_local_dir_count = options.get('cache-local-dir-count', '20')
         blob_cache_size = options.get('blob-cache-size', '')

@@ -63,7 +63,6 @@ class TestDatabases(unittest.TestCase):
                   {'storages': 'Users Users_1 Sessions',
                    'enable-persistent-cache': 'true'})
 
-        buildout.print_options()
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     contains_string('shared-blob-dir false'))
 
@@ -106,7 +105,6 @@ class TestDatabasesNoEnvironment(unittest.TestCase):
                    'cache_servers': 'cache',
                    'enable-persistent-cache': 'true'})
 
-        buildout.print_options()
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     contains_string('shared-blob-dir false'))
 
@@ -150,7 +148,6 @@ class TestDatabasesNoSecondaryCache(unittest.TestCase):
                    'sql_host': 'host',
                    'enable-persistent-cache': 'true'})
 
-        buildout.print_options()
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     is_not(contains_string('cache-servers')))
 
@@ -170,6 +167,5 @@ class TestDatabasesNoSecondaryCacheLegacy(unittest.TestCase):
                   {'storages': 'Users Users_1 Sessions',
                    'enable-persistent-cache': 'true'})
 
-        buildout.print_options()
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     is_not(contains_string('cache-servers')))
