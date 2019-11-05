@@ -21,155 +21,155 @@ import unittest
 from nti.recipes.zodb.relstorage import Databases
 
 class NoDefaultBuildout(zc.buildout.testing.Buildout):
-	# The testing buildout doesn't provide a way to
-	# ignore local defaults, which makes it system dependent, which
-	# is clearly wrong
-	def __init__(self):
-		zc.buildout.buildout.Buildout.__init__(
+    # The testing buildout doesn't provide a way to
+    # ignore local defaults, which makes it system dependent, which
+    # is clearly wrong
+    def __init__(self):
+        zc.buildout.buildout.Buildout.__init__(
             self,
-			'',
-			[('buildout', 'directory', os.getcwd())],
-			user_defaults=False)
+            '',
+            [('buildout', 'directory', os.getcwd())],
+            user_defaults=False)
 
 def setup_buildout_environment():
-	buildout = NoDefaultBuildout()
-	buildout['deployment'] = {
-		'etc-directory': '/etc',
-		'data-directory': '/data',
-		'cache-directory': '/caches'
-	}
-	buildout['relstorages_opts'] = {
-		'sql_user': 'BAZ',
-		'pack-gc': 'true'
-	}
-	buildout['relstorages_users_storage_opts'] = {
-		'sql_user': 'FOO',
-		'pack-gc': 'false'
-	}
-	return buildout
+    buildout = NoDefaultBuildout()
+    buildout['deployment'] = {
+        'etc-directory': '/etc',
+        'data-directory': '/data',
+        'cache-directory': '/caches'
+    }
+    buildout['relstorages_opts'] = {
+        'sql_user': 'BAZ',
+        'pack-gc': 'true'
+    }
+    buildout['relstorages_users_storage_opts'] = {
+        'sql_user': 'FOO',
+        'pack-gc': 'false'
+    }
+    return buildout
 
 class TestDatabases(unittest.TestCase):
 
-	def test_parse(self):
-		buildout = setup_buildout_environment()
-		buildout['environment'] = {
-			'sql_user': 'user',
-			'sql_passwd': 'passwd',
-			'sql_host': 'host',
-			'cache_servers': 'cache'
-		}
+    def test_parse(self):
+        buildout = setup_buildout_environment()
+        buildout['environment'] = {
+            'sql_user': 'user',
+            'sql_passwd': 'passwd',
+            'sql_host': 'host',
+            'cache_servers': 'cache'
+        }
 
-		Databases( buildout, 'relstorages',
-				   {'storages': 'Users Users_1 Sessions',
-				    'enable-persistent-cache': 'true'} )
+        Databases(buildout, 'relstorages',
+                  {'storages': 'Users Users_1 Sessions',
+                   'enable-persistent-cache': 'true'})
 
-		buildout.print_options()
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('shared-blob-dir false') )
+        buildout.print_options()
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('shared-blob-dir false'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string( 'FOO' ) )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('FOO'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string( 'pack-gc false' ) )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('pack-gc false'))
 
-		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
-					 contains_string( 'BAZ' ) )
-		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
-					 contains_string( 'pack-gc true' ) )
+        assert_that(buildout['relstorages_users_1_storage']['client_zcml'],
+                    contains_string('BAZ'))
+        assert_that(buildout['relstorages_users_1_storage']['client_zcml'],
+                    contains_string('pack-gc true'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-dir /caches/data_cache/Users.cache') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-local-dir /caches/data_cache/Users.cache'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-dir-count 20') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-local-dir-count 20'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-mb 300') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-local-mb 300'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-servers cache') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-servers cache'))
 
 class TestDatabasesNoEnvironment(unittest.TestCase):
 
-	def test_parse(self):
-		# No verification, just sees if it runs
+    def test_parse(self):
+        # No verification, just sees if it runs
 
-		buildout = setup_buildout_environment()
+        buildout = setup_buildout_environment()
 
-		Databases( buildout, 'relstorages',
-				   {'storages': 'Users Users_1 Sessions',
-				    'sql_user': 'user',
-				    'sql_passwd': 'passwd',
-				    'sql_host': 'host',
-				    'relstorage-name-prefix': 'zzz',
-				    'cache_servers': 'cache',
-				    'enable-persistent-cache': 'true'} )
+        Databases(buildout, 'relstorages',
+                  {'storages': 'Users Users_1 Sessions',
+                   'sql_user': 'user',
+                   'sql_passwd': 'passwd',
+                   'sql_host': 'host',
+                   'relstorage-name-prefix': 'zzz',
+                   'cache_servers': 'cache',
+                   'enable-persistent-cache': 'true'})
 
-		buildout.print_options()
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('shared-blob-dir false') )
+        buildout.print_options()
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('shared-blob-dir false'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string( 'FOO' ) )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('FOO'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string( 'pack-gc false' ) )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('pack-gc false'))
 
-		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
-					 contains_string( 'BAZ' ) )
-		assert_that( buildout['relstorages_users_1_storage']['client_zcml'],
-					 contains_string( 'pack-gc true' ) )
+        assert_that(buildout['relstorages_users_1_storage']['client_zcml'],
+                    contains_string('BAZ'))
+        assert_that(buildout['relstorages_users_1_storage']['client_zcml'],
+                    contains_string('pack-gc true'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-dir /caches/data_cache/Users.cache') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-local-dir /caches/data_cache/Users.cache'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-dir-count 20') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-local-dir-count 20'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-local-mb 300') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-local-mb 300'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('cache-servers cache') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('cache-servers cache'))
 
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 contains_string('name zzzUsers') )
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    contains_string('name zzzUsers'))
 
 class TestDatabasesNoSecondaryCache(unittest.TestCase):
 
-	def test_parse(self):
-		# No verification, just sees if it runs
+    def test_parse(self):
+        # No verification, just sees if it runs
 
-		buildout = setup_buildout_environment()
+        buildout = setup_buildout_environment()
 
-		Databases( buildout, 'relstorages',
-				   {'storages': 'Users Users_1 Sessions',
-				    'sql_user': 'user',
-				    'sql_passwd': 'passwd',
-				    'sql_host': 'host',
-				    'enable-persistent-cache': 'true'} )
+        Databases(buildout, 'relstorages',
+                  {'storages': 'Users Users_1 Sessions',
+                   'sql_user': 'user',
+                   'sql_passwd': 'passwd',
+                   'sql_host': 'host',
+                   'enable-persistent-cache': 'true'})
 
-		buildout.print_options()
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 is_not(contains_string('cache-servers')) )
+        buildout.print_options()
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    is_not(contains_string('cache-servers')))
 
 class TestDatabasesNoSecondaryCacheLegacy(unittest.TestCase):
 
-	def test_parse(self):
-		# No verification, just sees if it runs
+    def test_parse(self):
+        # No verification, just sees if it runs
 
-		buildout = setup_buildout_environment()
-		buildout['environment'] = {
-			'sql_user': 'user',
-			'sql_passwd': 'passwd',
-			'sql_host': 'host'
-		}
+        buildout = setup_buildout_environment()
+        buildout['environment'] = {
+            'sql_user': 'user',
+            'sql_passwd': 'passwd',
+            'sql_host': 'host'
+        }
 
-		Databases( buildout, 'relstorages',
-				   {'storages': 'Users Users_1 Sessions',
-				    'enable-persistent-cache': 'true'} )
+        Databases(buildout, 'relstorages',
+                  {'storages': 'Users Users_1 Sessions',
+                   'enable-persistent-cache': 'true'})
 
-		buildout.print_options()
-		assert_that( buildout['relstorages_users_storage']['client_zcml'],
-					 is_not(contains_string('cache-servers')) )
+        buildout.print_options()
+        assert_that(buildout['relstorages_users_storage']['client_zcml'],
+                    is_not(contains_string('cache-servers')))
