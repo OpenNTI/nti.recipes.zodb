@@ -12,10 +12,11 @@ from __future__ import division
 
 import textwrap
 
+from . import MetaRecipe
 
 logger = __import__('logging').getLogger(__name__)
 
-class Databases(object):
+class Databases(MetaRecipe):
 
     def __init__(self, buildout, name, options):
         # Get the 'environment' block from buildout if it exists. This is for
@@ -300,9 +301,3 @@ class Databases(object):
               [ZODB]
               uris = %s
         """ % ' '.join(zeo_uris))
-
-    def install(self):
-        return ()
-
-    def update(self):
-        pass

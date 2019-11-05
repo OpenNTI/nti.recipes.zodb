@@ -4,11 +4,12 @@
 A meta recipe to create configuration for ZEO clients and servers
 supporting multiple storages.
 
-.. $Id$
 """
 from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
+
+from . import MetaRecipe
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -79,7 +80,7 @@ zeo.conf =
 deployment = deployment
 """
 
-class Databases(object):
+class Databases(MetaRecipe):
 
     def __init__(self, buildout, name, options):
         storages = options['storages'].split()
@@ -96,7 +97,9 @@ class Databases(object):
         zodb_file_uris = []
         client_parts = []
 
-        base_file_uri = "zlibfile://${%s:data_file}?database_name=${%s:name}&blobstorage_dir=${%s:blob_dir}"
+        base_file_uri = ("zlibfile://${%(part)s:data_file}"
+                         "?database_name=${%(part)s:name}"
+                         "&blobstorage_dir=${%(part)s:blob_dir}")
 
         # To add a new database, define
         # a storage and client section and fill in the details.
@@ -131,9 +134,7 @@ class Databases(object):
 
             zeo_uris.append("zconfig://${zodb_conf:output}#%s" % storage.lower())
 
-            zodb_file_uris.append(base_file_uri % (client_part_name,
-                                                   client_part_name,
-                                                   client_part_name))
+            zodb_file_uris.append(base_file_uri % {'part': client_part_name})
 
         # Indents must match or we get parsing errors, hence
         # the tabs
@@ -153,15 +154,8 @@ class Databases(object):
             # and force them to all be the same for all storages)
             # For now, make it cause the parse error if attempted so
             # people don't expect it to work.
-            #if part_name in buildout:
-            #   existing_vals = buildout._raw[part_name]
-            #   # XXX: Hack: Buildout doesn't implement __delitem__
-            #   del buildout._raw[part_name]
-            #   del buildout._data[part_name]
 
             buildout.parse(client)
-            #for k, v in existing_vals.items():
-            #   buildout[part_name][k] = v
 
         buildout.parse("""
         [zodb_conf]
@@ -199,9 +193,3 @@ class Databases(object):
             %s
         mode = 0700
         """ % '\n            '.join(blob_paths))
-
-    def install(self):
-        return ()
-
-    def update(self):
-        pass

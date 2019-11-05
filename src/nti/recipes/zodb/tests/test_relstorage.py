@@ -4,32 +4,16 @@
 from __future__ import print_function, absolute_import, division
 __docformat__ = "restructuredtext en"
 
-# disable: accessing protected members, too many methods
-# pylint: disable=W0212,R0904
+
+import unittest
 
 from hamcrest import is_not
 from hamcrest import assert_that
 from hamcrest import contains_string
 
-import zc.buildout.buildout
-
-import zc.buildout.testing
-
-import os
-import unittest
-
 from nti.recipes.zodb.relstorage import Databases
 
-class NoDefaultBuildout(zc.buildout.testing.Buildout):
-    # The testing buildout doesn't provide a way to
-    # ignore local defaults, which makes it system dependent, which
-    # is clearly wrong
-    def __init__(self):
-        zc.buildout.buildout.Buildout.__init__(
-            self,
-            '',
-            [('buildout', 'directory', os.getcwd())],
-            user_defaults=False)
+from . import NoDefaultBuildout
 
 def setup_buildout_environment():
     buildout = NoDefaultBuildout()
