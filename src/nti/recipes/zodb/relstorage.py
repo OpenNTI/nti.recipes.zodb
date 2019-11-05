@@ -274,7 +274,7 @@ class Databases(MetaRecipe):
         for options in options_order:
             if option_name in options:
                 return options[option_name]
-        return None
+        return None # pragma: no cover
 
     def __part_with_adapter(self, buildout, options, part, part_name, other_bases_list):
         if self.__get_in_order('sql_adapter',
