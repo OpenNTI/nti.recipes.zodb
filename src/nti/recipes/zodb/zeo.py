@@ -9,7 +9,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
-from . import MetaRecipe
+from . import MultiStorageRecipe
 
 logger = __import__('logging').getLogger(__name__)
 
@@ -80,9 +80,10 @@ zeo.conf =
 deployment = deployment
 """
 
-class Databases(MetaRecipe):
+class Databases(MultiStorageRecipe):
 
     def __init__(self, buildout, name, options):
+        MultiStorageRecipe.__init__(self, buildout, name, options)
         storages = options['storages'].split()
         zeo_name = options.get('name', 'Dataserver')
 
@@ -90,9 +91,6 @@ class Databases(MetaRecipe):
         buildout.parse(_base_storage)
 
 
-        blob_paths = []
-        zeo_uris = []
-        client_zcml_names = []
         server_zcml_names = []
         zodb_file_uris = []
         client_parts = []
@@ -127,12 +125,12 @@ class Databases(MetaRecipe):
             """ % (client_part_name, storage_part_name, storage),
                                  client_part_name))
 
+            self.create_directory(storage_part_name, 'blob_dir')
+            self.add_database(client_part_name, 'client_zcml')
 
-            blob_paths.append("${%s:blob_dir}" % storage_part_name)
-            client_zcml_names.append("${%s:client_zcml}" % client_part_name)
             server_zcml_names.append("${%s:server_zcml}" % storage_part_name)
 
-            zeo_uris.append("zconfig://${zodb_conf:output}#%s" % storage.lower())
+
 
             zodb_file_uris.append(base_file_uri % {'part': client_part_name})
 
@@ -157,25 +155,8 @@ class Databases(MetaRecipe):
 
             buildout.parse(client)
 
-        buildout.parse("""
-        [zodb_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zodb_conf.xml
-        input = inline:
-                %%import zc.zlibstorage
-                %%import relstorage
-
-                %s
-        """ % '\n                '.join(client_zcml_names))
-
-        buildout.parse("""
-        [zodb_uri_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zeo_uris.ini
-        input = inline:
-              [ZODB]
-              uris = %s
-        """ % ' '.join(zeo_uris))
+        self.buildout_add_zodb_conf()
+        self.buildout_add_zeo_uris()
 
         buildout.parse("""
         [zodb_direct_file_uris_conf]
@@ -186,10 +167,4 @@ class Databases(MetaRecipe):
               uris = %s
         """ % ' '.join(zodb_file_uris))
 
-        buildout.parse("""
-        [zeo_dirs]
-        recipe = z3c.recipe.mkdir
-        paths =
-            %s
-        mode = 0700
-        """ % '\n            '.join(blob_paths))
+        self.buildout_add_mkdirs()

@@ -12,16 +12,17 @@ from __future__ import division
 
 import textwrap
 
-from . import MetaRecipe
+from . import MultiStorageRecipe
 
 logger = __import__('logging').getLogger(__name__)
 
 def _option_true(value):
     return value and value.lower() in ('1', 'yes', 'on', 'true')
 
-class Databases(MetaRecipe):
+class Databases(MultiStorageRecipe):
 
     def __init__(self, buildout, name, options):
+        MultiStorageRecipe.__init__(self, buildout, name, options)
         # Get the 'environment' block from buildout if it exists. This is for
         # combatibility with existing buildouts.
         environment = buildout.get('environment', {})
@@ -201,9 +202,7 @@ class Databases(MetaRecipe):
         __traceback_info__ = base_storage_str
         buildout.parse(base_storage_str)
         storages = options['storages'].split()
-        blob_paths = []
-        zeo_uris = []
-        zcml_names = []
+
         for storage in storages:
             part_name = name + '_' + storage.lower() + '_storage'
             # Note that while it would be nice to automatically extend
@@ -228,47 +227,18 @@ class Databases(MetaRecipe):
             part = self.__part_with_adapter(buildout, options, part, part_name, other_bases_list)
             buildout.parse(part)
 
-            blob_paths.append("${%s:blob_dir}" % part_name)
-            blob_paths.append("${%s:cache-local-dir}" % part_name)
-
-            zcml_names.append("${%s:client_zcml}" % part_name)
-            zeo_uris.append("zconfig://${zodb_conf:output}#%s" % storage.lower())
+            self.create_directory(part_name, 'blob_dir')
+            self.create_directory(part_name, 'cache-local-dir')
+            self.add_database(part_name, 'client_zcml')
 
             if _option_true(options.get('write-zodbconvert', 'false')):
                 self.__create_zodbconvert_parts(buildout, options,
                                                 storage, part_name,
-                                                other_bases, other_bases_list,
-                                                blob_paths)
+                                                other_bases, other_bases_list)
 
-        buildout.parse("""
-        [blob_dirs]
-        recipe = z3c.recipe.mkdir
-        mode = 0700
-        paths =
-            %s
-        """ % '\n            '.join(blob_paths))
-
-        buildout.parse("""
-        [zodb_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zodb_conf.xml
-        input = inline:
-                %%import zc.zlibstorage
-                %%import relstorage
-
-                %s
-        """ % '\n                '.join(zcml_names))
-        # Indents must match or we get parsing errors, hence
-        # the tabs
-
-        buildout.parse("""
-        [zodb_uri_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zeo_uris.ini
-        input = inline:
-              [ZODB]
-              uris = %s
-        """ % ' '.join(zeo_uris))
+        self.buildout_add_mkdirs()
+        self.buildout_add_zodb_conf()
+        self.buildout_add_zeo_uris()
 
     def __get_in_order(self, option_name, options_order):
         for options in options_order:
@@ -283,6 +253,9 @@ class Databases(MetaRecipe):
             # sqlite resides on a single machine. No need to duplicate
             # blobs both in the DB and in the blob cache. This reduces parallel
             # commit, but it's not really parallel anyway.
+            # Note that we DO NOT add the data-dir to the list of directories to create.
+            # Uninstalling this part should not remove that directory, which is
+            # what would happen if we added it.
             part += textwrap.dedent("""
             shared-blob-dir = true
             sql_adapter_args =
@@ -293,8 +266,8 @@ class Databases(MetaRecipe):
 
     def __create_zodbconvert_parts(self, buildout, options,
                                    storage_name, part_name,
-                                   base_part_names, base_part_list,
-                                   dirs_to_create):
+                                   base_part_names, base_part_list):
+
 
         # ZODB convert to and from files
 
@@ -302,8 +275,8 @@ class Databases(MetaRecipe):
 
         src_part_name = 'zodbconvert_' + part_name + '_src'
         dest_part_name = 'zodbconvert_' + part_name + '_destination'
-        dirs_to_create.append("${%s:dump_dir}" % src_part_name)
-        dirs_to_create.append("${%s:blob_dump_dir}" % dest_part_name)
+        self.create_directory(src_part_name, 'dump_dir')
+        self.create_directory(dest_part_name, 'blob_dump_dir')
 
         to_relstorage_part_name = normalized_storage_name + '_to_relstorage_conf'
         from_relstorage_part_name = normalized_storage_name + '_from_relstorage_conf'
