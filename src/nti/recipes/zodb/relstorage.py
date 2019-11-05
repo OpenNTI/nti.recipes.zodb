@@ -16,6 +16,9 @@ from . import MetaRecipe
 
 logger = __import__('logging').getLogger(__name__)
 
+def _option_true(value):
+    return value and value.lower() in ('1', 'yes', 'on', 'true')
+
 class Databases(MetaRecipe):
 
     def __init__(self, buildout, name, options):
@@ -24,14 +27,14 @@ class Databases(MetaRecipe):
         environment = buildout.get('environment', {})
         relstorage_name_prefix = options.get('relstorage-name-prefix', '')
 
-        # The initial use case has the same SQL
-        # database, SQL user, cache servers,
-        # etc, for all connections. The recipe
-        # can easily be extended to allow separate values
-        # in the future
+        # The initial use case has the same SQL database, SQL user,
+        # cache servers, etc, for all connections. Using _opts sections
+        # either for the this element or for an individual storage in this element
+        # can override it.
         sql_user = options.get('sql_user') or environment.get('sql_user')
         sql_passwd = options.get('sql_passwd') or environment.get('sql_passwd')
         sql_host = options.get('sql_host') or environment.get('sql_host')
+        sql_adapter = options.get('sql_adapter') or 'mysql'
 
         # by default, relstorage assumes a shared blob
         # directory. However, our most common use case here
@@ -43,7 +46,7 @@ class Databases(MetaRecipe):
         shared_blob_dir = options['shared-blob-dir']
 
         cache_local_dir = ''
-        if options.get('enable-persistent-cache', '').lower() == 'true':
+        if _option_true(options.get('enable-persistent-cache', 'true')):
             # Do not store this 'cache-local-dir' in the relstorage options.
             # We'll intermittently have buildout issues when writing this
             # to the installed.cfg while looking up the storage refs. We
@@ -51,31 +54,22 @@ class Databases(MetaRecipe):
             # confusing to have one (count limited) directory for all storages.
             cache_local_dir = '${deployment:cache-directory}/data_cache/${:name}.cache'
         cache_local_mb = options.get('cache-local-mb', '300')
-        cache_local_dir_count = options.get('cache-local-dir-count', '20')
+
         blob_cache_size = options.get('blob-cache-size', '')
         pack_gc = options.get('pack-gc', 'false')
 
-        # Poll interval is extremely critical. If the memcache instance
-        # is unreliable or subject to going away, it seems that the poll
-        # interval still applies; this means that a storage could be
-        # up to that far out of date without knowing it.  In environments
-        # with a fairly high write rate, this is a crucial mistake
-        # (we still have some fairly high write rates in our chat code)
-        # which leads to conflict errors. Fortunately, DB load seems not
-        # to be an issue, so we can poll to our heart's content and
-        # set this to 0...although this may eat up mysql connections?
-        # UPDATE: 7.1.2016 Remove poll-interval to use default specified
-        # by relstorage (see https://github.com/zodb/relstorage/issues/87).
 
-        # Utilizing the built in memcache capabilites is not beneficial in all
-        # cases. If the recipe option 'cache_servers' is empty or not defined,
-        # the relstorage config options 'cache_module_name' and
-        # 'cache_module_name' will be omitted from the generated config.
+        # Utilizing the built in memcache capabilites is not
+        # beneficial in all cases. In fact it rarely is. It's
+        # semi-deprecated in RelStorage 3. If the recipe option
+        # 'cache_servers' is empty or not defined, the relstorage
+        # config options 'cache_module_name' and 'cache_module_name'
+        # will be omitted from the generated config.
         cache_servers = options.get('cache_servers') or environment.get('cache_servers', '')
-        cache_config = '\n        '.join(textwrap.dedent("""
+        cache_config = textwrap.dedent("""
             cache_module_name = memcache
             cache_servers = %s
-            """ % (cache_servers.strip(),)).splitlines())
+        """ % (cache_servers.strip(),))
         remote_cache_config = '\n                            '.join(textwrap.dedent("""
             cache-servers ${:cache_servers}
             cache-module-name ${:cache_module_name}
@@ -122,8 +116,8 @@ class Databases(MetaRecipe):
 
         # Order matters
         base_storage_name = name + '_base_storage'
-        buildout.parse("""
-        [%s]
+        base_storage_str = textwrap.dedent("""
+        [%(part)s]
         name = BASE
         data_dir = ${deployment:data-directory}
         blob_dir = ${:data_dir}/${:name}.blobs
@@ -131,21 +125,20 @@ class Databases(MetaRecipe):
         dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}
         blob_dump_dir = ${:data_dir}/relstorage_dump/${:dump_name}/blobs
         filestorage_name = NONE
-        shared-blob-dir = %s
-        relstorage-name-prefix = %s
-        %s
+        shared-blob-dir = %(shared_blob_dir)s
+        relstorage-name-prefix = %(prefix)s
+        %(cache_config)s
         commit_lock_timeout = 60
         cache-size = 100000
-        cache-local-dir = %s
-        cache-local-mb = %s
-        cache-local-dir-count = %s
-        blob-cache-size = %s
-        pack-gc = %s
+        cache-local-dir = %(cache_local_dir)s
+        cache-local-mb = %(cache_local_mb)s
+        blob-cache-size = %(blob_cache_size)s
+        pack-gc = %(pack_gc)s
         sql_db = ${:name}
-        sql_user = %s
-        sql_passwd = %s
-        sql_host = %s
-        sql_adapter = mysql
+        sql_user = %(sql_user)s
+        sql_passwd = %(sql_passwd)s
+        sql_host = %(sql_host)s
+        sql_adapter = %(sql_adapter)s
         sql_adapter_args =
                  db ${:sql_db}
                  user ${:sql_user}
@@ -159,11 +152,10 @@ class Databases(MetaRecipe):
                             blob-dir ${:blob_dir}
                             shared-blob-dir ${:shared-blob-dir}
                             cache-prefix ${:name}
-                            %s
+                            %(remote_cache_config)s
                             commit-lock-timeout ${:commit_lock_timeout}
                             cache-local-mb ${:cache-local-mb}
                             cache-local-dir ${:cache-local-dir}
-                            cache-local-dir-count ${:cache-local-dir-count}
                             blob-cache-size ${:blob-cache-size}
                             name ${:relstorage-name-prefix}${:name}
                             keep-history false
@@ -187,9 +179,27 @@ class Databases(MetaRecipe):
                         blob-dir ${:blob_dump_dir}
                     </filestorage>
                 </zlibstorage>
-        """ % (base_storage_name, shared_blob_dir, relstorage_name_prefix, cache_config,
-               cache_local_dir, cache_local_mb, cache_local_dir_count,
-               blob_cache_size, pack_gc, sql_user, sql_passwd, sql_host, remote_cache_config))
+        """) % {
+            'part': base_storage_name,
+            'shared_blob_dir': shared_blob_dir,
+            'prefix': relstorage_name_prefix,
+            'cache_config': cache_config,
+            'cache_local_dir': cache_local_dir,
+            'cache_local_mb': cache_local_mb,
+            'blob_cache_size': blob_cache_size,
+            'pack_gc': pack_gc,
+            'sql_user': sql_user or '',
+            'sql_passwd': sql_passwd or '',
+            'sql_host': sql_host or '',
+            'sql_adapter': sql_adapter,
+            'remote_cache_config': remote_cache_config,
+        }
+
+        if not blob_cache_size:
+            # Strip empty options
+            base_storage_str = base_storage_str.replace('blob-cache-size ${:blob-cache-size}', '')
+        __traceback_info__ = base_storage_str
+        buildout.parse(base_storage_str)
         storages = options['storages'].split()
         blob_paths = []
         zeo_uris = []
@@ -201,19 +211,21 @@ class Databases(MetaRecipe):
             # of this recipe, which obviously fails (with weird errors
             # about "part already exists"). So we use _opts for everything,
             # in precedence order
-            other_bases = [base_storage_name]
+            other_bases_list = [base_storage_name]
             if name + '_opts' in buildout:
-                other_bases.append(name + '_opts')
+                other_bases_list.append(name + '_opts')
             if part_name + '_opts' in buildout:
-                other_bases.append(part_name + '_opts')
-            other_bases = '\n                '.join(other_bases)
-            part_template = """
+                other_bases_list.append(part_name + '_opts')
+            other_bases = '\n                '.join(other_bases_list)
+            part_template = textwrap.dedent("""
             [%s]
             <=
                 %s
             name = %s
-            """
+            """)
             part = part_template % (part_name, other_bases, storage)
+
+            part = self.__part_with_adapter(buildout, options, part, part_name, other_bases_list)
             buildout.parse(part)
 
             blob_paths.append("${%s:blob_dir}" % part_name)
@@ -222,56 +234,12 @@ class Databases(MetaRecipe):
             zcml_names.append("${%s:client_zcml}" % part_name)
             zeo_uris.append("zconfig://${zodb_conf:output}#%s" % storage.lower())
 
-            # ZODB convert to and from files
-            src_part_name = 'zodbconvert_' + part_name + '_src'
-            dest_part_name = 'zodbconvert_' + part_name + '_destination'
-            blob_paths.append("${%s:dump_dir}" % src_part_name)
-            blob_paths.append("${%s:blob_dump_dir}" % dest_part_name)
+            if _option_true(options.get('write-zodbconvert', 'false')):
+                self.__create_zodbconvert_parts(buildout, options,
+                                                storage, part_name,
+                                                other_bases, other_bases_list,
+                                                blob_paths)
 
-            to_relstorage_part_name = storage.lower() + '_to_relstorage_conf'
-            from_relstorage_part_name = storage.lower() + '_from_relstorage_conf'
-
-            zodb_convert_part_template = """
-            [%s]
-            <=
-                %s
-            name = %s
-            filestorage_name = %s
-            dump_name = %s
-            sql_db = %s
-            """
-            src_part = zodb_convert_part_template % (src_part_name,
-                                                     other_bases,
-                                                     'source', 'destination',
-                                                     storage.lower(),
-                                                     storage)
-            buildout.parse(src_part)
-
-            dest_part = zodb_convert_part_template % (dest_part_name,
-                                                      other_bases,
-                                                      'destination', 'source',
-                                                      storage.lower(),
-                                                      storage)
-            buildout.parse(dest_part)
-            convert_template = """
-            [%s]
-            recipe = collective.recipe.template
-            output = ${deployment:etc-directory}/relstorage/%s.xml
-            input = inline:
-                %%import zc.zlibstorage
-                %%import relstorage
-
-                ${%s:storage_zcml}
-                ${%s:filestorage_zcml}
-            """
-            buildout.parse(convert_template % (to_relstorage_part_name,
-                                               to_relstorage_part_name,
-                                               dest_part_name,
-                                               dest_part_name))
-            buildout.parse(convert_template % (from_relstorage_part_name,
-                                               from_relstorage_part_name,
-                                               src_part_name,
-                                               src_part_name))
         buildout.parse("""
         [blob_dirs]
         recipe = z3c.recipe.mkdir
@@ -301,3 +269,90 @@ class Databases(MetaRecipe):
               [ZODB]
               uris = %s
         """ % ' '.join(zeo_uris))
+
+    def __get_in_order(self, option_name, options_order):
+        for options in options_order:
+            if option_name in options:
+                return options[option_name]
+        return None # pragma: no cover
+
+    def __part_with_adapter(self, buildout, options, part, part_name, other_bases_list):
+        if self.__get_in_order('sql_adapter',
+                               [options] + [buildout[p]
+                                            for p in other_bases_list]) == 'sqlite3':
+            # sqlite resides on a single machine. No need to duplicate
+            # blobs both in the DB and in the blob cache. This reduces parallel
+            # commit, but it's not really parallel anyway.
+            part += textwrap.dedent("""
+            shared-blob-dir = true
+            sql_adapter_args =
+                     data-dir ${:data_dir}/%(part_name)s/
+                     ${:sql_adapter_extra_args}
+            """) % {'part_name': part_name}
+        return part
+
+    def __create_zodbconvert_parts(self, buildout, options,
+                                   storage_name, part_name,
+                                   base_part_names, base_part_list,
+                                   dirs_to_create):
+
+        # ZODB convert to and from files
+
+        normalized_storage_name = storage_name.lower()
+
+        src_part_name = 'zodbconvert_' + part_name + '_src'
+        dest_part_name = 'zodbconvert_' + part_name + '_destination'
+        dirs_to_create.append("${%s:dump_dir}" % src_part_name)
+        dirs_to_create.append("${%s:blob_dump_dir}" % dest_part_name)
+
+        to_relstorage_part_name = normalized_storage_name + '_to_relstorage_conf'
+        from_relstorage_part_name = normalized_storage_name + '_from_relstorage_conf'
+
+        zodb_convert_part_template = textwrap.dedent("""
+        [%s]
+        <=
+            %s
+        name = %s
+        filestorage_name = %s
+        dump_name = %s
+        sql_db = %s
+        """)
+        src_part = zodb_convert_part_template % (src_part_name,
+                                                 base_part_names,
+                                                 'source', 'destination',
+                                                 normalized_storage_name,
+                                                 storage_name)
+        src_part = self.__part_with_adapter(buildout, options,
+                                            src_part, part_name,
+                                            base_part_list)
+        buildout.parse(src_part)
+
+        dest_part = zodb_convert_part_template % (dest_part_name,
+                                                  base_part_names,
+                                                  'destination', 'source',
+                                                  normalized_storage_name,
+                                                  storage_name)
+        dest_part = self.__part_with_adapter(
+            buildout, options,
+            dest_part, part_name,
+            base_part_list)
+        buildout.parse(dest_part)
+        convert_template = textwrap.dedent("""
+        [%s]
+        recipe = collective.recipe.template
+        output = ${deployment:etc-directory}/relstorage/%s.xml
+        input = inline:
+            %%import zc.zlibstorage
+            %%import relstorage
+
+            ${%s:storage_zcml}
+            ${%s:filestorage_zcml}
+        """)
+        buildout.parse(convert_template % (to_relstorage_part_name,
+                                           to_relstorage_part_name,
+                                           dest_part_name,
+                                           dest_part_name))
+        buildout.parse(convert_template % (from_relstorage_part_name,
+                                           from_relstorage_part_name,
+                                           src_part_name,
+                                           src_part_name))
