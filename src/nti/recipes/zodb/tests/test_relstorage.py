@@ -162,74 +162,69 @@ class TestDatabases(unittest.TestCase):
             'sql_adapter': 'sqlite3',
             'write-zodbconvert': 'true',
         })
-
-
-        expected = textwrap.dedent("""\
-            <zodb Users>
-                pool-size 60
-                database-name Users
-                cache-size 100000
-                <zlibstorage Users>
-                <relstorage Users>
-                    blob-dir /data/Users.blobs
-                    shared-blob-dir true
-                    cache-prefix Users
-
-                    commit-lock-timeout 60
-                    cache-local-mb 300
-                    cache-local-dir /caches/data_cache/Users.cache
-
-                    name Users
-                    keep-history false
-                    pack-gc false
-                    <sqlite3>
-                        data-dir /data/relstorages_users_storage/
-
-                    </sqlite3>
-                </relstorage>
-            </zlibstorage>
-            </zodb>
-        """).strip()
+        expected = """\
+<zodb Users>
+  cache-size 100000
+  database-name Users
+  pool-size 60
+  <zlibstorage Users>
+    <relstorage Users>
+        <sqlite3>
+          data-dir /data/relstorages_users_storage
+""" + "  " + """
+        </sqlite3>
+      blob-dir /data/Users.blobs
+      cache-local-dir /caches/data_cache/Users.cache
+      cache-local-mb 300
+      cache-prefix Users
+      commit-lock-timeout 60
+      keep-history false
+      name Users
+      pack-gc false
+      shared-blob-dir true
+    </relstorage>
+</zlibstorage>
+</zodb>"""
         self.assertEqual(
             buildout['relstorages_users_storage']['client_zcml'],
             expected)
-
         expected = """\
-            <zodb Sessions>
-                pool-size 60
-                database-name Sessions
-                cache-size 100000
-                <zlibstorage Sessions>
-                <relstorage Sessions>
-                    blob-dir /data/Sessions.blobs
-                    shared-blob-dir true
-                    cache-prefix Sessions
-
-                    commit-lock-timeout 60
-                    cache-local-mb 300
-                    cache-local-dir /caches/data_cache/Sessions.cache
-
-                    name Sessions
-                    keep-history false
-                    pack-gc true
-                    <sqlite3>
-                        data-dir /data/relstorages_sessions_storage/
-                        driver gevent sqlite
-                        <pragmas>
-                           synchronous off
-                        </pragmas>
-                    </sqlite3>
-                </relstorage>
-            </zlibstorage>
-            </zodb>
+<zodb Sessions>
+  cache-size 100000
+  database-name Sessions
+  pool-size 60
+  <zlibstorage Sessions>
+    <relstorage Sessions>
+            <sqlite3>
+            data-dir /data/relstorages_sessions_storage
+              driver gevent sqlite
+              <pragmas>
+               synchronous off
+              </pragmas>
+            </sqlite3>
+        blob-dir /data/Sessions.blobs
+        cache-local-dir /caches/data_cache/Sessions.cache
+        cache-local-mb 300
+        cache-prefix Sessions
+        commit-lock-timeout 60
+        keep-history false
+        name Sessions
+        pack-gc true
+        shared-blob-dir true
+    </relstorage>
+</zlibstorage>
+</zodb>
         """
+
         self.assertEqual(
             [x.strip() for x in
              buildout['relstorages_sessions_storage']['client_zcml'].splitlines() if x.strip()],
             [x.strip() for x in expected.splitlines() if x.strip()])
 
         assert_that(buildout['zodb_conf']['input'],
-                    contains_string('data-dir /data/relstorages_sessions_storage/'))
+                    contains_string('data-dir /data/relstorages_sessions_storage'))
 
         assert_that(buildout['sessions_to_relstorage_conf']['input'],
-                    contains_string('data-dir /data/relstorages_sessions_storage/'))
+                    contains_string('data-dir /data/relstorages_sessions_storage'))
+        assert_that(buildout['sessions_from_relstorage_conf']['input'],
+                    contains_string('data-dir /data/relstorages_sessions_storage'))

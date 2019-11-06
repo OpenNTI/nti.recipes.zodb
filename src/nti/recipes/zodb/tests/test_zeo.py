@@ -32,3 +32,6 @@ class TestDatabases(unittest.TestCase):
 
         assert_that(buildout['users_1_storage']['server_zcml'],
                     contains_string('pack-gc true'))
+
+        for i in range(1, 4):
+            assert_that(buildout['base_zeo']['zeo.conf'], contains_string('<filestorage %d>' % i))
