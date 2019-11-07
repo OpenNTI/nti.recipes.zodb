@@ -15,21 +15,21 @@ class ValueWriter(object):
 
     def __init__(self):
         self._lines = []
-        self._current_indent = ''
+        self.current_indent = ''
 
     def getvalue(self):
         return '\n'.join(self._lines)
 
     @contextmanager
     def indented(self, by='    '):
-        prev_indent = self._current_indent
-        self._current_indent = prev_indent + by
+        prev_indent = self.current_indent
+        self.current_indent = prev_indent + by
         yield self
-        self._current_indent = prev_indent
+        self.current_indent = prev_indent
 
 
     def begin_line(self, *substrs):
-        self._lines.append(self._current_indent + ''.join(substrs))
+        self._lines.append(self.current_indent + ''.join(substrs))
 
     def append(self, *substrs):
         self._lines[-1] += ''.join(substrs)
@@ -181,6 +181,14 @@ class _NamedValues(_Values):
         return uses
 
 class Part(_NamedValues):
+    """
+    A buildout configuration part (or section).
+
+    :param extends: A tuple of strings or other parts.
+        Remember that in buildout, *later* elements in the
+        list take priority over earlier ones, not vice versa.
+        (The opposite of Python's class MRO.)
+    """
 
     def __init__(self, _name, extends=(), **kwargs):
         super(Part, self).__init__(_name, kwargs)
@@ -190,20 +198,27 @@ class Part(_NamedValues):
         try:
             return super(Part, self).__getitem__(key)
         except KeyError:
-            for extension in self.extends:
+            for extension in reversed(self.extends):
                 try:
                     v = extension[key]
                 except (TypeError, KeyError):
                     pass
                 else:
-                    v = copy(v)
-                    v.__parent__ = self
+                    if hasattr(v, '__parent__'):
+                        v = copy(v)
+                        v.__parent__ = self
                     return v
             # On Python 2, if we raised an exception in the
             # loop, it will overwrite the KeyError we
             # originally caught, and we could wind up with a TypeError,
             # which is not what we want.
             raise KeyError(key)
+
+    def get(self, key, default=None):
+        try:
+            return self[key]
+        except KeyError:
+            return default
 
     def _write_header(self, io):
         io.begin_line('[', self.name, ']')
@@ -219,6 +234,10 @@ class Part(_NamedValues):
             if k != 'recipe':
                 yield k, v
 
+# ZConfig.schemaless is a module that contains a parser for existing
+# configurations. It creates Section objects from that module. These
+# extend dict and know how to write themselves through ``__str__(self,
+# prefix='')``.  They handle imports but not defines.
 
 class ZConfigSnippet(_Values):
     _skip_empty_values = True
@@ -323,6 +342,8 @@ class _Const(_Contained):
     def format_for_part(self, part):
         return part.format_value(self.const)
 
+    def __str__(self):
+        return str(self.const)
 
 class hyphenated(_Const):
     hyphenated = True

@@ -15,21 +15,30 @@ from nti.recipes.zodb.relstorage import Databases
 
 from . import NoDefaultBuildout
 
-def setup_buildout_environment():
+def setup_buildout_environment(**extra_options):
+    # You CANNOT make a change to a section after it's constructed
+    # here and expect sections that extend it to see the change. The original
+    # raw data is cached in a few places.
+    extra_options = extra_options or {}
     buildout = NoDefaultBuildout()
-    buildout['deployment'] = {
-        'etc-directory': '/etc',
-        'data-directory': '/data',
-        'cache-directory': '/caches'
-    }
-    buildout['relstorages_opts'] = {
-        'sql_user': 'BAZ',
-        'pack-gc': 'true'
-    }
-    buildout['relstorages_users_storage_opts'] = {
-        'sql_user': 'FOO',
-        'pack-gc': 'false'
-    }
+    sections = dict(
+        deployment={
+            'etc-directory': '/etc',
+            'data-directory': '/data',
+            'cache-directory': '/caches'
+        },
+        relstorages_opts={
+            'sql_user': 'BAZ',
+            'pack-gc': 'true'
+        },
+        relstorages_users_storage_opts={
+            'sql_user': 'FOO',
+            'pack-gc': 'false'
+        },
+    )
+    for k in sections:
+        sections[k].update(extra_options.get(k, {}))
+        buildout[k] = sections[k]
     return buildout
 
 class TestDatabases(unittest.TestCase):
@@ -136,17 +145,17 @@ class TestDatabases(unittest.TestCase):
             'sql_host': 'host'
         }
 
-        Databases(buildout, 'relstorages',
-                  {'storages': 'Users Users_1 Sessions',
-                   'enable-persistent-cache': 'true'})
+        Databases(buildout, 'relstorages', {
+            'storages': 'Users Users_1 Sessions',
+            'enable-persistent-cache': 'true'
+        })
 
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     is_not(contains_string('cache-servers')))
     maxDiff = None
 
     def test_parse_sqlite(self):
-        buildout = self.buildout
-
+        buildout = setup_buildout_environment(relstorages_opts={'sql_adapter': 'sqlite3'})
         buildout['relstorages_sessions_storage_opts'] = {
             'sql_adapter_extra_args': textwrap.dedent(
                 """
@@ -159,9 +168,15 @@ class TestDatabases(unittest.TestCase):
         }
         Databases(buildout, 'relstorages', {
             'storages': 'Users Sessions',
-            'sql_adapter': 'sqlite3',
             'write-zodbconvert': 'true',
         })
+        self.assertEqual(
+            buildout['relstorages_opts']['sql_adapter'],
+            'sqlite3')
+        self.assertEqual(
+            buildout['relstorages_users_storage']['sql_adapter'],
+            'sqlite3'
+        )
         expected = """\
 <zodb Users>
   cache-size 100000
@@ -171,7 +186,6 @@ class TestDatabases(unittest.TestCase):
     <relstorage Users>
         <sqlite3>
           data-dir /data/relstorages_users_storage
-""" + "  " + """
         </sqlite3>
       blob-dir /data/Users.blobs
       cache-local-dir /caches/data_cache/Users.cache
@@ -195,27 +209,31 @@ class TestDatabases(unittest.TestCase):
   pool-size 60
   <zlibstorage Sessions>
     <relstorage Sessions>
-            <sqlite3>
-            data-dir /data/relstorages_sessions_storage
-              driver gevent sqlite
-              <pragmas>
-               synchronous off
-              </pragmas>
-            </sqlite3>
-        blob-dir /data/Sessions.blobs
-        cache-local-dir /caches/data_cache/Sessions.cache
-        cache-local-mb 300
-        cache-prefix Sessions
-        commit-lock-timeout 60
-        keep-history false
-        name Sessions
-        pack-gc true
-        shared-blob-dir true
+        <sqlite3>
+          # This comment preserves whitespace
+          data-dir /data/relstorages_sessions_storage
+          driver gevent sqlite
+
+          <pragmas>
+            synchronous off
+          </pragmas>
+        </sqlite3>
+      blob-dir /data/Sessions.blobs
+      cache-local-dir /caches/data_cache/Sessions.cache
+      cache-local-mb 300
+      cache-prefix Sessions
+      commit-lock-timeout 60
+      keep-history false
+      name Sessions
+      pack-gc true
+      shared-blob-dir true
     </relstorage>
 </zlibstorage>
-</zodb>
-        """
-
+</zodb>"""
+        self.assertEqual(
+            buildout['relstorages_sessions_storage']['client_zcml'],
+            expected
+        )
         self.assertEqual(
             [x.strip() for x in
              buildout['relstorages_sessions_storage']['client_zcml'].splitlines() if x.strip()],

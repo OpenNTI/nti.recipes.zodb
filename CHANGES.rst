@@ -22,3 +22,6 @@
 
 - For RelStorage, avoid writing out the deprecated
   ``cache-local-dir-count`` option.
+
+- RelStorage: The value of ``sql_adapter_extra_args`` is validated to
+  be syntactically correct.

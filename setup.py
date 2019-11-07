@@ -61,7 +61,8 @@ setup(
         'setuptools',
         'zc.buildout',
         'zc.recipe.deployment',
-        'zc.zodbrecipes'
+        'zc.zodbrecipes',
+        'ZConfig', # zc.zodbrecipes also depends on this
     ],
     extras_require={
         'test': TESTS_REQUIRE

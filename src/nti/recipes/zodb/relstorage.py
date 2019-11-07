@@ -10,6 +10,10 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
+import io
+
+import ZConfig.schemaless
+
 from ._model import Part
 from ._model import ZConfigSection
 from ._model import ZConfigSnippet
@@ -23,6 +27,7 @@ from . import zodb
 from . import ZodbClientPart
 
 logger = __import__('logging').getLogger(__name__)
+NativeStringIO = io.BytesIO if bytes is str else io.StringIO
 
 def _option_true(value):
     return value and value.lower() in ('1', 'yes', 'on', 'true')
@@ -42,6 +47,7 @@ class relstorage(ZConfigSection):
     def __init__(self, memcache_config):
         ZConfigSection.__init__(
             self, 'relstorage', Ref('name'),
+            # One section, <adapter>
             ZConfigSection(
                 Ref('sql_adapter'), None,
                 APPEND=Ref('sql_adapter_args')
@@ -170,12 +176,11 @@ class Databases(MultiStorageRecipe):
             pack_gc=pack_gc,
             **extra_base_kwargs
         )
+
         if not blob_cache_size:
             del base_storage_part['blob-cache-size']
             del base_storage_part['storage_zcml'].storage['blob-cache-size']
 
-
-        __traceback_info__ = base_storage_part
         self._parse(base_storage_part)
         storages = options['storages'].split()
 
@@ -186,14 +191,14 @@ class Databases(MultiStorageRecipe):
             # of this recipe, which obviously fails (with weird errors
             # about "part already exists"). So we use _opts for everything,
             # in precedence order
-            other_bases_list = [base_storage_name]
-            if name + '_opts' in buildout:
-                other_bases_list.append(name + '_opts')
-            if part_name + '_opts' in buildout:
-                other_bases_list.append(part_name + '_opts')
+            other_bases_list = [
+                base_storage_part,
+                buildout.get(name + '_opts'),
+                buildout.get(part_name + '_opts')
+            ]
             part = Part(
                 part_name,
-                extends=other_bases_list,
+                extends=tuple(base for base in other_bases_list if base),
                 name=storage,
             )
 
@@ -211,28 +216,39 @@ class Databases(MultiStorageRecipe):
         self.buildout_add_zodb_conf()
         self.buildout_add_zeo_uris()
 
-    def __get_in_order(self, option_name, options_order):
-        for options in options_order:
-            if option_name in options:
-                return options[option_name]
-        return None # pragma: no cover
-
     def __adapter_settings(self, part):
-        if self.__get_in_order('sql_adapter',
-                               [self.my_options] + [self.buildout[p]
-                                                    for p in part.extends]) == 'sqlite3':
+        if part.get('sql_adapter') == 'sqlite3':
             # sqlite resides on a single machine. No need to duplicate
             # blobs both in the DB and in the blob cache. This reduces parallel
             # commit, but it's not really parallel anyway.
             # Note that we DO NOT add the data-dir to the list of directories to create.
             # Uninstalling this part should not remove that directory, which is
             # what would happen if we added it.
+
+            # Inline the sql_adapter_extra_args here so we can verify them as valid
+
+            sql_adapter_args = {'data-dir': str(part['data_dir']) + '/' + part.name}
+            extra_args = part['sql_adapter_extra_args']
+            if hasattr(extra_args, 'const'):
+                extra_args = extra_args.const
+            if extra_args:
+
+                config = ZConfig.schemaless.loadConfigFile(NativeStringIO(str(extra_args)))
+                config.addValue('data-dir', sql_adapter_args['data-dir'])
+                def write_to(writer):
+                    writer.begin_line("# This comment preserves whitespace")
+                    indent = writer.current_indent * 2 + '  '
+                    for line in config.__str__(indent).splitlines():
+                        writer.begin_line(line)
+                config.write_to = write_to
+
+                sql_adapter_args = config
+            else:
+                sql_adapter_args = ZConfigSnippet(**sql_adapter_args)
+
             settings = {
                 'shared-blob-dir': True,
-                'sql_adapter_args': ZConfigSnippet(**{
-                    'data-dir': part.uses_my_name(self.ref('data_dir') / '%s'),
-                    'APPEND': self.ref('sql_adapter_extra_args'),
-                })
+                'sql_adapter_args': sql_adapter_args,
             }
         else:
             settings = {}

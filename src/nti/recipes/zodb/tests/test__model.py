@@ -12,8 +12,6 @@ import unittest
 
 from hamcrest import assert_that
 from hamcrest import is_
-from hamcrest import has_key
-from hamcrest import has_entry
 
 from .. import _model as model
 
@@ -29,6 +27,18 @@ class TestPart(unittest.TestCase):
         part = model.Part('part', extends=(base,))
         with self.assertRaises(KeyError):
             operator.itemgetter('key')(part)
+
+    def test_lookup_correct_order(self):
+        # Later items take precedence.
+        first = model.Part('first', key='a string')
+        second = model.Part('second', key=42)
+        # wrapped in a const
+        val = second['key']
+        assert_that(val.const, is_(42))
+        part = model.Part('part', extends=(first, second))
+        part_val = part['key']
+        assert_that(part_val.const, is_(42))
+
 
 class TestZConfigSnippet(unittest.TestCase):
 
