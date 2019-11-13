@@ -11,8 +11,8 @@ from __future__ import division
 
 from . import MultiStorageRecipe
 from . import deployment
+from . import serverzlibstorage
 from . import filestorage
-from . import zlibstorage
 from . import ZodbClientPart
 from . import zodb
 
@@ -25,9 +25,6 @@ from ._model import renamed
 logger = __import__('logging').getLogger(__name__)
 
 
-class serverzlibstorage(zlibstorage):
-    pass
-
 
 class BaseStoragePart(Part):
     name = 'BASE'
@@ -36,15 +33,7 @@ class BaseStoragePart(Part):
     blob_dir = Ref('data_dir') / Ref('name') + '.blobs'
     data_file = Ref('data_dir') / Ref('name') + '.fs'
     pack_gc = hyphenated(False)
-    server_zcml = serverzlibstorage(
-        Ref('number'),
-        filestorage(
-            Ref('number'),
-            path=Ref('data_file'),
-            blob_dir=Ref("blob_dir"),
-            pack_gc=Ref("pack-gc").hyphenate()
-        )
-    )
+    server_zcml = None
 
 # client and storage have to be separate to avoid a dep loop
 
@@ -78,8 +67,8 @@ class eventlog(ZConfigSection):
 class BaseZeoPart(Part):
     name = None
     recipe = 'zc.zodbrecipes:server'
-    clientPipe = Ref('buildout', 'directory') / 'var' / 'zeosocket'
-    logFile = Ref('buildout', 'directory') / 'var' / 'log' / 'zeo.log'
+    clientPipe = Ref('deployment', 'run-directory') / 'zeosocket'
+    logFile = Ref('deployment', 'log-directory') / 'zeo.log'
     zeoConf = renamed('zeo.conf')
     deployment = 'deployment'
 
@@ -91,7 +80,18 @@ class Databases(MultiStorageRecipe):
         zeo_name = options.get('name', 'Dataserver')
 
         # Order matters
-        base_storage_part = BaseStoragePart(self._derive_related_part_name('base_storage'))
+        base_storage_part = BaseStoragePart(
+            self._derive_related_part_name('base_storage'),
+            server_zcml=self.zlibstorage_wrapper(
+                filestorage(
+                    Ref('number'),
+                    path=Ref('data_file'),
+                    blob_dir=Ref("blob_dir"),
+                    pack_gc=Ref("pack-gc").hyphenate()
+                ),
+                serverzlibstorage
+            )
+        )
         self._parse(base_storage_part)
 
         base_client_part = BaseClientPart(
@@ -99,8 +99,7 @@ class Databases(MultiStorageRecipe):
             extends=(base_storage_part,),
             client_zcml=zodb(
                 Ref('name'),
-                zlibstorage(
-                    None,
+                self.zlibstorage_wrapper(
                     zeoclient(
                         server=BaseZeoPart.clientPipe,
                         shared_blob_dir=hyphenated(True),
@@ -155,7 +154,7 @@ class Databases(MultiStorageRecipe):
             'base_zeo',
             name=zeo_name,
             zeoConf=[
-                '%import zc.zlibstorage',
+                self.zlibstorage_import(),
                 zeo(self.ref('clientPipe')),
             ] + server_zcml_names + [
                 eventlog(),

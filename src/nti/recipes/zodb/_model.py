@@ -39,9 +39,13 @@ class _Contained(object):
     __name__ = None
 
 class _Values(_Contained):
+    "A dict-like mapping if string keys to string values."
 
     def __init__(self, values):
         self.values = self._translate(dict(values))
+        self.keys = self.values.keys
+        self.items = self.values.items
+
 
     def _translate(self, kwargs):
         cls = type(self)
@@ -304,6 +308,9 @@ class Ref(_Contained, namedtuple('_SubstititionRef', ('part', 'setting'))):
     def format_for_part(self, _):
         return str(self)
 
+    def __copy__(self):
+        return self
+
     def __add__(self, other):
         """
         Add concatenates the values on the same line.
@@ -326,6 +333,12 @@ class Ref(_Contained, namedtuple('_SubstititionRef', ('part', 'setting'))):
     def hyphenate(self):
         return _HyphenatedRef(self.part, self.setting)
 
+class RelativeRef(Ref):
+    """A reference that will be resolved within the current part."""
+
+    def __new__(cls, setting):
+        # pylint:disable=signature-differs
+        return Ref.__new__(cls, '', setting) # pylint:disable=too-many-function-args
 
 class _HyphenatedRef(Ref):
     __slots__ = ()
@@ -390,6 +403,10 @@ class _CompoundValue(_Contained):
 
 
 class ChoiceRef(_Contained):
+    """
+    References a different section:setting based on looking up the
+    part's name in the section map.
+    """
     __slots__ = ('section_map', 'setting')
 
     def __init__(self, section_map, setting):

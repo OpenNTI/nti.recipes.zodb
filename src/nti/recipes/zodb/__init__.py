@@ -41,6 +41,10 @@ class zlibstorage(ZConfigSection):
         ZConfigSection.__init__(self, self.__class__.__name__,
                                 _name, storage)
 
+class serverzlibstorage(zlibstorage):
+    pass
+
+
 class zodb(ZConfigSection):
     # Also crucial is the pool-size. Each connection has resources
     # like a memcache connection, a MySQL connection, and its
@@ -173,11 +177,14 @@ class MultiStorageRecipe(MetaRecipe):
             output=deployment.etc / 'zodb_conf.xml',
             input=[
                 'inline:',
-                '%import zc.zlibstorage',
+                self.zlibstorage_import(),
                 '%import relstorage',
             ] + zcml_names
         )
         self._parse(part)
+
+    def zlibstorage_import(self):
+        return '%import zc.zlibstorage' if self.needs_zlibstorage() else ''
 
     def buildout_add_zeo_uris(self):
         uris = ' '.join(
@@ -195,3 +202,20 @@ class MultiStorageRecipe(MetaRecipe):
             ],
         )
         self._parse(part)
+
+    def needs_zlibstorage(self):
+        environment = self.buildout.get('environment', {})
+        options = self.my_options
+        compress_mode = options.get('compress') or environment.get("compress") or 'decompress'
+        compress_mode = compress_mode.lower()
+        assert compress_mode in ('decompress', 'false', 'none', 'compress', 'true')
+        return None if compress_mode == 'none' else compress_mode
+
+    def zlibstorage_wrapper(self, zcml, wrapper=zlibstorage):
+        compress_mode = self.needs_zlibstorage()
+        if compress_mode:
+            zcml = wrapper(zcml.zconfig_name, zcml)
+            if compress_mode in ('decompress', 'false'):
+                zcml.values['compress'] = False
+
+        return zcml

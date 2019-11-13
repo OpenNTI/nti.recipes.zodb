@@ -52,7 +52,8 @@ class TestDatabases(unittest.TestCase):
             'sql_user': 'user',
             'sql_passwd': 'passwd',
             'sql_host': 'host',
-            'cache_servers': 'cache'
+            'cache_servers': 'cache',
+            'compress': 'true',
         }
 
         Databases(buildout, 'relstorages',
@@ -86,14 +87,16 @@ class TestDatabases(unittest.TestCase):
         # No verification, just sees if it runs
         buildout = self.buildout
 
-        Databases(buildout, 'relstorages',
-                  {'storages': 'Users Users_1 Sessions',
-                   'sql_user': 'user',
-                   'sql_passwd': 'passwd',
-                   'sql_host': 'host',
-                   'relstorage-name-prefix': 'zzz',
-                   'cache_servers': 'cache',
-                   'enable-persistent-cache': 'true'})
+        Databases(buildout, 'relstorages', {
+            'storages': 'Users Users_1 Sessions',
+            'sql_user': 'user',
+            'sql_passwd': 'passwd',
+            'sql_host': 'host',
+            'relstorage-name-prefix': 'zzz',
+            'cache_servers': 'cache',
+            'enable-persistent-cache': 'true',
+            'compress': 'none',
+        })
 
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     contains_string('shared-blob-dir false'))
@@ -121,9 +124,145 @@ class TestDatabases(unittest.TestCase):
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
                     contains_string('name zzzUsers'))
 
+        expected = """\
+<zodb Users>
+  cache-size 100000
+  database-name Users
+  pool-size 60
+  <relstorage Users>
+    <mysql>
+      # This comment preserves whitespace
+          db Users
+          host host
+          passwd passwd
+          user FOO
+    </mysql>
+  blob-dir /data/Users.blobs
+  cache-local-dir /caches/data_cache/Users.cache
+  cache-local-mb 300
+  cache-prefix Users
+  commit-lock-timeout 60
+  keep-history false
+  name zzzUsers
+  pack-gc false
+  shared-blob-dir false
+  cache-module-name memcache
+  cache-servers cache
+</relstorage>
+</zodb>"""
+        self.assertEqual(
+            buildout['relstorages_users_storage']['client_zcml'],
+            expected
+        )
+
+    def test_parse_no_environment_extra_args(self):
+        buildout = self.buildout
+        buildout['relstorages_sessions_storage_opts'] = {
+            'sql_adapter_extra_args': textwrap.dedent(
+                """
+                driver gevent mysqldb
+                """
+            )
+        }
+
+        Databases(buildout, 'relstorages',
+                  {'storages': 'Sessions',
+                   'sql_user': 'user',
+                   'sql_passwd': 'passwd',
+                   'sql_host': 'host',
+                   'relstorage-name-prefix': 'zzz',
+                   'cache_servers': 'cache',
+                   'enable-persistent-cache': 'true',
+                   'compress': 'true'})
+        expected = """\
+<zodb Sessions>
+  cache-size 100000
+  database-name Sessions
+  pool-size 60
+  <zlibstorage Sessions>
+    <relstorage Sessions>
+        <mysql>
+          # This comment preserves whitespace
+          db Sessions
+          driver gevent mysqldb
+          host host
+          passwd passwd
+          user BAZ
+        </mysql>
+      blob-dir /data/Sessions.blobs
+      cache-local-dir /caches/data_cache/Sessions.cache
+      cache-local-mb 300
+      cache-prefix Sessions
+      commit-lock-timeout 60
+      keep-history false
+      name zzzSessions
+      pack-gc true
+      shared-blob-dir false
+      cache-module-name memcache
+      cache-servers cache
+    </relstorage>
+</zlibstorage>
+</zodb>"""
+        self.assertEqual(
+            buildout['relstorages_sessions_storage']['client_zcml'],
+            expected
+        )
+
+    def test_parse_postgres(self):
+        buildout = self.buildout
+        buildout['environment'] = {
+            'sql_user': 'user',
+            'sql_passwd': 'passwd',
+            'sql_host': 'host',
+        }
+        buildout['relstorages_sessions_storage_opts'] = {
+            'sql_adapter': 'postgresql',
+            'sql_user': '${environment:sql_user}',
+            'sql_passwd': '${environment:sql_passwd}',
+            'sql_host': '${environment:sql_host}',
+            'sql_db': 'sessions',
+            'sql_adapter_args': textwrap.dedent(
+                """
+                dsn dbname=${:sql_db} user=${:sql_user} password=${:sql_passwd} host=${:sql_host}
+                """
+            ),
+        }
+        Databases(buildout, 'relstorages', {
+            'storages': 'Sessions',
+        })
+
+        expected = """\
+<zodb Sessions>
+  cache-size 100000
+  database-name Sessions
+  pool-size 60
+  <zlibstorage Sessions>
+    <relstorage Sessions>
+        <postgresql>
+          # This comment preserves whitespace
+          dsn dbname=sessions user=user password=passwd host=host
+        </postgresql>
+      blob-dir /data/Sessions.blobs
+      cache-local-dir /caches/data_cache/Sessions.cache
+      cache-local-mb 300
+      cache-prefix Sessions
+      commit-lock-timeout 60
+      keep-history false
+      name Sessions
+      pack-gc true
+      shared-blob-dir false
+    </relstorage>
+  compress false
+</zlibstorage>
+</zodb>"""
+
+        self.assertEqual(
+            buildout['relstorages_sessions_storage']['client_zcml'],
+            expected
+        )
+
     def test_parse_no_secondary_cache(self):
         # No verification, just sees if it runs
-
         buildout = self.buildout
 
         Databases(buildout, 'relstorages',
@@ -185,6 +324,7 @@ class TestDatabases(unittest.TestCase):
   <zlibstorage Users>
     <relstorage Users>
         <sqlite3>
+          # This comment preserves whitespace
           data-dir /data/relstorages_users_storage
         </sqlite3>
       blob-dir /data/Users.blobs
@@ -197,6 +337,7 @@ class TestDatabases(unittest.TestCase):
       pack-gc false
       shared-blob-dir true
     </relstorage>
+  compress false
 </zlibstorage>
 </zodb>"""
         self.assertEqual(
@@ -228,8 +369,10 @@ class TestDatabases(unittest.TestCase):
       pack-gc true
       shared-blob-dir true
     </relstorage>
+  compress false
 </zlibstorage>
 </zodb>"""
+
         self.assertEqual(
             buildout['relstorages_sessions_storage']['client_zcml'],
             expected

@@ -17,12 +17,12 @@ import ZConfig.schemaless
 from ._model import Part
 from ._model import ZConfigSection
 from ._model import ZConfigSnippet
-from ._model import Ref
+from ._model import Ref as SubstVar
+from ._model import RelativeRef as LocalSubstVar
 from ._model import hyphenated
 
 from . import MultiStorageRecipe
 from . import filestorage
-from . import zlibstorage
 from . import zodb
 from . import ZodbClientPart
 
@@ -33,54 +33,68 @@ def _option_true(value):
     return value and value.lower() in ('1', 'yes', 'on', 'true')
 
 class relstorage(ZConfigSection):
-    blob_cache_size = Ref('blob-cache-size').hyphenate()
-    blob_dir = Ref("blob_dir").hyphenate()
-    cache_local_dir = Ref('cache-local-dir').hyphenate()
-    cache_local_mb = Ref('cache-local-mb').hyphenate()
-    cache_prefix = Ref('name').hyphenate()
-    commit_lock_timeout = Ref('commit_lock_timeout').hyphenate()
+    blob_cache_size = LocalSubstVar('blob-cache-size').hyphenate()
+    blob_dir = LocalSubstVar("blob_dir").hyphenate()
+    cache_local_dir = LocalSubstVar('cache-local-dir').hyphenate()
+    cache_local_mb = LocalSubstVar('cache-local-mb').hyphenate()
+    cache_prefix = LocalSubstVar('name').hyphenate()
+    commit_lock_timeout = LocalSubstVar('commit_lock_timeout').hyphenate()
     keep_history = hyphenated(False)
-    name = Ref('relstorage-name-prefix') + Ref('name')
-    pack_gc = Ref('pack-gc').hyphenate()
-    shared_blob_dir = Ref('shared-blob-dir').hyphenate()
+    name = LocalSubstVar('relstorage-name-prefix') + LocalSubstVar('name')
+    pack_gc = LocalSubstVar('pack-gc').hyphenate()
+    shared_blob_dir = LocalSubstVar('shared-blob-dir').hyphenate()
 
     def __init__(self, memcache_config):
         ZConfigSection.__init__(
-            self, 'relstorage', Ref('name'),
-            # One section, <adapter>
+            self, 'relstorage', LocalSubstVar('name'),
+            # One section, <$adapter>
             ZConfigSection(
-                Ref('sql_adapter'), None,
-                APPEND=Ref('sql_adapter_args')
+                LocalSubstVar('sql_adapter'), None,
+                APPEND=LocalSubstVar('sql_adapter_args')
             ),
             APPEND=memcache_config,
         )
 
 class BaseStoragePart(ZodbClientPart):
     blob_cache_size = hyphenated(None)
-    blob_dir = Ref('data_dir') / Ref('name') + '.blobs'
-    blob_dump_dir = Ref('data_dir') / 'relstorage_dump' / Ref('dump_name') / 'blobs'
+    blob_dir = LocalSubstVar('data_dir') / LocalSubstVar('name') + '.blobs'
+    blob_dump_dir = (
+        LocalSubstVar('data_dir')
+        / 'relstorage_dump'
+        / LocalSubstVar('dump_name')
+        / 'blobs'
+    )
     cache_local_dir = hyphenated(None)
     cache_local_mb = hyphenated(None)
 
     commit_lock_timeout = 60
-    data_dir = Ref('deployment', 'data-directory')
-    dump_dir = Ref('data_dir') / 'relstorage_dump' / Ref('dump_name')
-    dump_name = Ref('name')
+    data_dir = SubstVar('deployment', 'data-directory')
+    dump_dir = LocalSubstVar('data_dir') / 'relstorage_dump' / LocalSubstVar('dump_name')
+    dump_name = LocalSubstVar('name')
     filestorage_name = 'NONE'
     name = 'BASE'
     pack_gc = hyphenated(False)
     relstorage_name_prefix = hyphenated(None)
     shared_blob_dir = hyphenated(False)
 
-    sql_db = Ref('name')
+    sql_db = LocalSubstVar('name')
     sql_adapter_args = ZConfigSnippet(
-        db=Ref('sql_db'),
-        user=Ref('sql_user'),
-        passwd=Ref('sql_passwd'),
-        host=Ref('sql_host'),
-        APPEND=Ref('sql_adapter_extra_args')
+        db=LocalSubstVar('sql_db'),
+        user=LocalSubstVar('sql_user'),
+        passwd=LocalSubstVar('sql_passwd'),
+        host=LocalSubstVar('sql_host'),
+        APPEND=LocalSubstVar('sql_adapter_extra_args')
     )
     sql_adapter_extra_args = None
+
+
+def _ZConfig_write_to(config, writer):
+    writer.begin_line("# This comment preserves whitespace")
+    indent = writer.current_indent * 2 + '  '
+    for line in config.__str__(indent).splitlines():
+        writer.begin_line(line)
+
+ZConfig.schemaless.Section.write_to = _ZConfig_write_to
 
 class Databases(MultiStorageRecipe):
 
@@ -143,12 +157,8 @@ class Databases(MultiStorageRecipe):
             extra_base_kwargs = {}
             remote_cache_config = ZConfigSnippet()
 
-        # Connections have a pointer to a new RelStorage object, and when a connection
-        # is closed, this new storage is never actually closed or cleaned up, because
-        # the connection might be reused. Instead, connections rely on
-        # reference counting/GC to clean up the relstorage object and its resources
-        # (The DB will clean up active connections in the pool, but only when it itself
-        # is closed). This could be a problem in cases of cycles.
+        relstorage_zcml = self.zlibstorage_wrapper(relstorage(remote_cache_config))
+        filestorage_zcml = self.zlibstorage_wrapper(filestorage(self.ref('filestorage_name')))
 
         # Order matters
         base_storage_name = name + '_base_storage'
@@ -159,15 +169,9 @@ class Databases(MultiStorageRecipe):
             sql_passwd=sql_passwd,
             sql_host=sql_host,
             sql_adapter=sql_adapter,
-            storage_zcml=zlibstorage(
-                self.ref('name'),
-                relstorage(remote_cache_config)
-            ),
+            storage_zcml=relstorage_zcml,
             client_zcml=zodb(self.ref('name'), self.ref('storage_zcml')),
-            filestorage_zcml=zlibstorage(
-                self.ref('filestorage_name'),
-                filestorage(self.ref('filestorage_name'))
-            ),
+            filestorage_zcml=filestorage_zcml,
             shared_blob_dir=shared_blob_dir,
             relstorage_name_prefix=relstorage_name_prefix,
             cache_local_dir=cache_local_dir,
@@ -179,7 +183,10 @@ class Databases(MultiStorageRecipe):
 
         if not blob_cache_size:
             del base_storage_part['blob-cache-size']
-            del base_storage_part['storage_zcml'].storage['blob-cache-size']
+            zcml = base_storage_part['storage_zcml']
+            if hasattr(zcml, 'storage'):
+                zcml = zcml.storage # unwrap zlibstorage
+            del zcml['blob-cache-size']
 
         self._parse(base_storage_part)
         storages = options['storages'].split()
@@ -217,6 +224,18 @@ class Databases(MultiStorageRecipe):
         self.buildout_add_zeo_uris()
 
     def __adapter_settings(self, part):
+        # sql adapter args could be dict-like if its our default template,
+        # or it could be a string if it's specified by the user to replace our default
+        # template.
+        sql_adapter_args = part['sql_adapter_args']
+        if isinstance(sql_adapter_args, str):
+            sql_adapter_args = ZConfig.schemaless.loadConfigFile(NativeStringIO(sql_adapter_args))
+        else:
+            sql_adapter_args = ZConfig.schemaless.Section(data={
+                k: [v] for k, v in sql_adapter_args.items()
+            })
+
+        settings = {}
         if part.get('sql_adapter') == 'sqlite3':
             # sqlite resides on a single machine. No need to duplicate
             # blobs both in the DB and in the blob cache. This reduces parallel
@@ -224,34 +243,21 @@ class Databases(MultiStorageRecipe):
             # Note that we DO NOT add the data-dir to the list of directories to create.
             # Uninstalling this part should not remove that directory, which is
             # what would happen if we added it.
+            sql_adapter_args.clear()
+            sql_adapter_args.addValue('data-dir', str(part['data_dir']) + '/' + part.name)
+            settings['shared-blob-dir'] = True
 
-            # Inline the sql_adapter_extra_args here so we can verify them as valid
+        # Inline the sql_adapter_extra_args here so we can verify them as valid
+        extra_args = part['sql_adapter_extra_args']
+        if hasattr(extra_args, 'const'):
+            extra_args = extra_args.const
+        if extra_args:
+            config = ZConfig.schemaless.loadConfigFile(NativeStringIO(str(extra_args)))
+            for k, v in config.items():
+                sql_adapter_args[k] = v
+            sql_adapter_args.sections.extend(config.sections)
 
-            sql_adapter_args = {'data-dir': str(part['data_dir']) + '/' + part.name}
-            extra_args = part['sql_adapter_extra_args']
-            if hasattr(extra_args, 'const'):
-                extra_args = extra_args.const
-            if extra_args:
-
-                config = ZConfig.schemaless.loadConfigFile(NativeStringIO(str(extra_args)))
-                config.addValue('data-dir', sql_adapter_args['data-dir'])
-                def write_to(writer):
-                    writer.begin_line("# This comment preserves whitespace")
-                    indent = writer.current_indent * 2 + '  '
-                    for line in config.__str__(indent).splitlines():
-                        writer.begin_line(line)
-                config.write_to = write_to
-
-                sql_adapter_args = config
-            else:
-                sql_adapter_args = ZConfigSnippet(**sql_adapter_args)
-
-            settings = {
-                'shared-blob-dir': True,
-                'sql_adapter_args': sql_adapter_args,
-            }
-        else:
-            settings = {}
+        settings['sql_adapter_args'] = sql_adapter_args
         return settings
 
     def __create_zodbconvert_parts(self, part):
@@ -294,7 +300,7 @@ class Databases(MultiStorageRecipe):
             output=Part.uses_name('${deployment:etc-directory}/relstorage/%s.xml'),
             input=[
                 'inline:',
-                '%import zc.zlibstorage',
+                self.zlibstorage_import(),
                 '%import relstorage',
                 self.choice_ref(choices, 'storage_zcml'),
                 self.choice_ref(choices, 'filestorage_zcml'),
