@@ -9,19 +9,17 @@ __docformat__ = "restructuredtext en"
 import unittest
 
 from nti.recipes.zodb.zeo import Databases
-from . import NoDefaultBuildout
+from . import default_buildout
 
 class TestDatabases(unittest.TestCase):
     maxDiff = None
+
+    def setUp(self):
+        self.buildout = default_buildout()
+
     def test_parse(self):
         # No verification, just sees if it runs
-        buildout = NoDefaultBuildout()
-        buildout['deployment'] = {
-            'etc-directory': '/etc',
-            'data-directory': '/data',
-            'run-directory': '/var',
-            'log-directory': '/var/log',
-        }
+        buildout = self.buildout
 
         Databases(buildout, 'zeo',
                   {'storages': 'Users Users_1 Sessions',
@@ -90,13 +88,7 @@ class TestDatabases(unittest.TestCase):
 
     def test_parse_no_compress(self):
         # No verification, just sees if it runs
-        buildout = NoDefaultBuildout()
-        buildout['deployment'] = {
-            'etc-directory': '/etc',
-            'data-directory': '/data',
-            'run-directory': '/var',
-            'log-directory': '/var/log',
-        }
+        buildout = self.buildout
 
         Databases(buildout, 'zeo', {
             'storages': 'Users Users_1 Sessions',
@@ -152,3 +144,61 @@ class TestDatabases(unittest.TestCase):
             buildout['base_zeo']['zeo.conf'],
             expected
         )
+
+    def test_parse_override_defaults_in_opts(self):
+        buildout = self.buildout
+        buildout['zeo_opts'] = {
+            'pool_size': '2'
+        }
+
+        Databases(buildout, 'zeo', {
+            'storages': 'Users_1',
+            'pack-gc': 'true',
+            'compress': 'none',
+        })
+
+        expected = """\
+<zodb users_1_client>
+  cache-size 100000
+  database-name users_1_client
+  pool-size 2
+  <zeoclient>
+    blob-dir /data/users_1_client.blobs
+    name users_1_client
+    server /var/zeosocket
+    shared-blob-dir true
+    storage 1
+  </zeoclient>
+</zodb>"""
+
+        self.assertEqual(
+            buildout['users_1_client']['client_zcml'],
+            expected)
+
+    def test_parse_override_defaults_in_recipe(self):
+        buildout = self.buildout
+
+        Databases(buildout, 'zeo', {
+            'storages': 'Users_1',
+            'pack-gc': 'true',
+            'compress': 'none',
+            'pool_size': '2'
+        })
+
+        expected = """\
+<zodb users_1_client>
+  cache-size 100000
+  database-name users_1_client
+  pool-size 2
+  <zeoclient>
+    blob-dir /data/users_1_client.blobs
+    name users_1_client
+    server /var/zeosocket
+    shared-blob-dir true
+    storage 1
+  </zeoclient>
+</zodb>"""
+
+        self.assertEqual(
+            buildout['users_1_client']['client_zcml'],
+            expected)

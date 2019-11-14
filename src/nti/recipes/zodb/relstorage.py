@@ -20,6 +20,7 @@ from ._model import ZConfigSnippet
 from ._model import Ref as SubstVar
 from ._model import RelativeRef as LocalSubstVar
 from ._model import hyphenated
+from ._model import Default
 
 from . import MultiStorageRecipe
 from . import filestorage
@@ -67,7 +68,7 @@ class BaseStoragePart(ZodbClientPart):
     cache_local_dir = hyphenated(None)
     cache_local_mb = hyphenated(None)
 
-    commit_lock_timeout = 60
+    commit_lock_timeout = Default(60)
     data_dir = SubstVar('deployment', 'data-directory')
     dump_dir = LocalSubstVar('data_dir') / 'relstorage_dump' / LocalSubstVar('dump_name')
     dump_name = LocalSubstVar('name')
@@ -88,7 +89,7 @@ class BaseStoragePart(ZodbClientPart):
     sql_adapter_extra_args = None
 
 
-def _ZConfig_write_to(config, writer):
+def _ZConfig_write_to(config, writer, part):
     writer.begin_line("# This comment preserves whitespace")
     indent = writer.current_indent * 2 + '  '
     for line in config.__str__(indent).splitlines():
@@ -200,12 +201,13 @@ class Databases(MultiStorageRecipe):
             # in precedence order
             other_bases_list = [
                 base_storage_part,
+                buildout.get(name + '_opts_base'),
                 buildout.get(name + '_opts'),
                 buildout.get(part_name + '_opts')
             ]
             part = Part(
                 part_name,
-                extends=tuple(base for base in other_bases_list if base),
+                extends=other_bases_list,
                 name=storage,
             )
 

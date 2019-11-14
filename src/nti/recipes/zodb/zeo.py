@@ -128,19 +128,37 @@ class Databases(MultiStorageRecipe):
         for i, storage in enumerate(storages):
             # storages begin at 1
             i = i + 1
+            storage_part_name = storage.lower() + '_storage'
+            storage_part_extends = [
+                base_storage_part,
+                buildout.get(name + '_opts_base'),
+                buildout.get(name + '_opts'),
+                buildout.get(storage_part_name + '_opts'),
+            ]
             storage_part = Part(
-                storage.lower() + '_storage',
-                extends=(base_storage_part,),
+                storage_part_name,
+                extends=storage_part_extends,
                 name=storage,
                 number=i,
                 pack_gc=hyphenated(options.get('pack-gc', False))
             )
             self._parse(storage_part)
 
+            client_part_name = storage.lower() + '_client'
+            client_part_extends = [
+                storage_part,
+                base_client_part,
+                # We have to put these in the list again so they get
+                # the desired (high) precedence.
+                buildout.get(name + '_opts_base'),
+                buildout.get(name + '_opts'),
+                buildout.get(storage_part_name + '_opts'),
+                buildout.get(client_part_name + '_opts'),
+            ]
             client_part = Part(
-                storage.lower() + '_client',
-                extends=(storage_part, base_client_part),
-                name=storage.lower() + '_client',
+                client_part_name,
+                extends=client_part_extends,
+                name=client_part_name
             )
             client_parts.append(client_part)
 
