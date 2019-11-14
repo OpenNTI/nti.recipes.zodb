@@ -197,7 +197,7 @@ class TestDatabases(unittest.TestCase):
             buildout['relstorages_sessions_storage']['client_zcml'],
         )
 
-    def test_parse_postgres(self):
+    def test_parse_postgres_with_dsn(self):
         buildout = self.buildout
         buildout['environment'] = {
             'sql_user': 'user',
@@ -249,6 +249,53 @@ class TestDatabases(unittest.TestCase):
             expected,
             buildout['relstorages_sessions_storage']['client_zcml']
         )
+
+    def test_parse_postgres_auto_dsn(self):
+        # If no DSN is provided in sql_adapter_args, then one is created from the parts
+        # that are present. Leave out password and host to test skipping those;
+        # specify a port to test quoting.
+        buildout = self.buildout
+        buildout['relstorages_sessions_storage_opts'] = {
+            'sql_adapter': 'postgresql',
+            'sql_adapter_extra_args': textwrap.dedent("""
+                sql_port 5433
+            """)
+        }
+        Databases(buildout, 'relstorages', {
+            'storages': 'Sessions',
+        })
+
+        expected = """\
+<zodb Sessions>
+  cache-size 100000
+  database-name Sessions
+  pool-size 60
+  <zlibstorage Sessions>
+    <relstorage Sessions>
+        <postgresql>
+          # This comment preserves whitespace
+          dsn dbname='Sessions' user='BAZ' port=5433
+        </postgresql>
+      blob-dir /data/Sessions.blobs
+      cache-local-dir /caches/data_cache/Sessions.cache
+      cache-local-mb 300
+      cache-prefix Sessions
+      commit-lock-timeout 60
+      keep-history false
+      name Sessions
+      pack-gc true
+      shared-blob-dir false
+    </relstorage>
+  compress false
+</zlibstorage>
+</zodb>"""
+
+        self.assertEqual(
+            expected,
+            buildout['relstorages_sessions_storage']['client_zcml']
+        )
+
+
 
     def test_parse_override_defaults_local(self):
         buildout = self.buildout
