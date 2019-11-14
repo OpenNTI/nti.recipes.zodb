@@ -15,6 +15,8 @@ from hamcrest import is_
 
 from .. import _model as model
 
+# pylint:disable=protected-access
+
 class TestPart(unittest.TestCase):
 
     def test_failed_lookup_with_str_extends(self):
@@ -39,6 +41,10 @@ class TestPart(unittest.TestCase):
         part_val = part['key']
         assert_that(part_val.const, is_(42))
 
+    def test_get_default(self):
+        part = model.Part('part')
+        self.assertIs(part.get('no-key', self), self)
+
 
 class TestZConfigSnippet(unittest.TestCase):
 
@@ -58,3 +64,9 @@ class TestRef(unittest.TestCase):
         # the way it is created
         val2 = '/root' / val
         assert_that(str(val2), is_('/root/prefix/${part:setting}'))
+
+
+class TestConst(unittest.TestCase):
+
+    def test_str(self):
+        self.assertEqual(str(model._Const(self)), str(self))

@@ -176,14 +176,6 @@ class _NamedValues(_Values):
         new_inst.name = name
         return new_inst
 
-    def uses_my_name(self, template):
-        uses = self.uses_name(template)
-        def f(_):
-            the_template = self.format_value(template)
-            return the_template % (self.name,)
-        uses.format_for_part = f
-        return uses
-
 class Part(_NamedValues):
     """
     A buildout configuration part (or section).
