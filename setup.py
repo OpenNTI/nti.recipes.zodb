@@ -1,7 +1,6 @@
 import os
 from setuptools import setup, find_packages
 
-VERSION = '0.0.0'
 
 entry_points = {
     "zc.buildout" : [
@@ -24,7 +23,7 @@ def read_file(*path):
 
 setup(
     name='nti.recipes.zodb',
-    version=VERSION,
+    version='1.0.0a1',
     author='Jason Madden',
     author_email='open-source@nextthought.com',
     description="zc.buildout recipes for RelStorage and ZEO",
