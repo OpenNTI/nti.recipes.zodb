@@ -46,17 +46,35 @@ class _Values(_Contained):
         self.keys = self.values.keys
         self.items = self.values.items
 
+    def _owned(self, value):
+        if isinstance(value, _Contained):
+            # Refs are tuples.
+            value = copy(value)
+        elif isinstance(value, (list, tuple)):
+            value = tuple(self._owned(v) for v in value)
+        else:
+            value = _Const(value)
+        if hasattr(value, '__parent__'):
+            value.__parent__ = self
+        return value
 
     def _translate(self, kwargs):
         cls = type(self)
         values = {}
         for c in reversed(cls.mro()):
-            local_values = {
-                k: v
-                for k, v in vars(c).items()
-                if not k.startswith('_') and not callable(v)
-            }
-            values.update(local_values)
+            for k, v in vars(c).items():
+                if k.startswith('_') or callable(v):
+                    continue
+                # Backport to Python 2
+                if hasattr(v, '__set_name__'):
+                    v.__set_name__(c, k)
+                # Give __get__ a chance, but only if
+                # it's not hidden by a instance attribute.
+                # (This is a bit weird, but it lets us use 'name'
+                # both as a attribute and in our values)
+                if k not in vars(self) or hasattr(v, '__set__'):
+                    v = getattr(self, k)
+                values[k] = v
         values.update(kwargs)
 
         # Transform kwargs that had _ back into -
@@ -71,12 +89,9 @@ class _Values(_Contained):
             elif getattr(cls_value, 'new_name', None):
                 values.pop(k)
                 k = cls_value.new_name
-            if isinstance(v, _Contained):
-                v = copy(v)
-            else:
-                v = _Const(v)
-            v.__parent__ = self
-            v.__name__ = k
+            v = self._owned(v)
+            if hasattr(v, '__name__'):
+                v.__name__ = k
             values[k] = v
         return values
 
@@ -104,24 +119,24 @@ class _Values(_Contained):
             value = str(value)
         return value
 
-    def _write_indented_value(self, io, lines):
+    def _write_indented_value(self, io, lines, part):
         with io.indented():
             if hasattr(lines, 'write_to'):
-                lines.write_to(io)
+                lines.write_to(io, part)
                 return
 
             for line in lines:
                 if hasattr(line, 'write_to'):
-                    line.write_to(io)
+                    line.write_to(io, part)
                 else:
-                    line = self.format_value(line)
+                    line = part.format_value(line)
                     io.begin_line(line)
 
     _key_value_sep = ' = '
     _skip_empty_values = False
 
-    def _write_one(self, io, k, v):
-        v = self.format_value(v)
+    def _write_one(self, io, k, v, part):
+        v = part.format_value(v)
         if not v and self._skip_empty_values:
             return
         io.begin_line(k, self._key_value_sep)
@@ -132,9 +147,9 @@ class _Values(_Contained):
                 io.append(v)
             else:
                 # A list of lines.
-                self._write_indented_value(io, v)
+                self._write_indented_value(io, v, part)
 
-    def _write_header(self, io):
+    def _write_header(self, io, part):
         "Does nothing"
 
     _write_trailer = _write_header
@@ -142,14 +157,15 @@ class _Values(_Contained):
     def _values_to_write(self):
         return sorted(self.values.items())
 
-    def _write_values(self, io):
+    def _write_values(self, io, part):
         for k, v in self._values_to_write():
-            self._write_one(io, k, v)
+            self._write_one(io, k, v, part)
 
-    def write_to(self, io):
-        self._write_header(io)
-        self._write_values(io)
-        self._write_trailer(io)
+    def write_to(self, io, part=None):
+        part = part if part is not None else self
+        self._write_header(io, part)
+        self._write_values(io, part)
+        self._write_trailer(io, part)
 
     def __str__(self):
         io = ValueWriter()
@@ -188,7 +204,8 @@ class Part(_NamedValues):
 
     def __init__(self, _name, extends=(), **kwargs):
         super(Part, self).__init__(_name, kwargs)
-        self.extends = extends
+        self.extends = tuple(e for e in extends if e is not None)
+        self._defaults = {}
 
     def __getitem__(self, key):
         try:
@@ -216,19 +233,26 @@ class Part(_NamedValues):
         except KeyError:
             return default
 
-    def _write_header(self, io):
+    def _write_header(self, io, part):
+        assert part is self
         io.begin_line('[', self.name, ']')
         if self.extends:
             io.begin_line('<=')
             extends = [getattr(e, 'name', e) for e in self.extends]
-            self._write_indented_value(io, extends)
+            self._write_indented_value(io, extends, self)
         if 'recipe' in self.values:
-            self._write_one(io, 'recipe', self.values['recipe'])
+            self._write_one(io, 'recipe', self.values['recipe'], part)
+
+    def add_default(self, key, value):
+        self._defaults[key] = value
 
     def _values_to_write(self):
         for k, v in super(Part, self)._values_to_write():
             if k != 'recipe':
                 yield k, v
+
+        for k, v in self._defaults.items():
+            yield k, v
 
 # ZConfig.schemaless is a module that contains a parser for existing
 # configurations. It creates Section objects from that module. These
@@ -240,19 +264,22 @@ class ZConfigSnippet(_Values):
     _key_value_sep = ' '
     _body_indention = '  '
 
+
     def __init__(self, **kwargs):
-        self.trailer = kwargs.pop("APPEND", None)
+        self.trailer = None
+        if 'APPEND' in kwargs:
+            self.trailer = kwargs.pop("APPEND")
+            self.trailer.__parent__ = self
         _Values.__init__(self, kwargs)
 
-    def _write_trailer(self, io):
-        __traceback_info__ = self.trailer
+    def _write_trailer(self, io, part):
         if self.trailer:
             with io.indented(self._body_indention):
                 # It's always another snippet or a simple value.
                 if hasattr(self.trailer, 'write_to'):
-                    self.trailer.write_to(io)
+                    self.trailer.write_to(io, part)
                 else:
-                    io.begin_line(self.format_value(self.trailer))
+                    io.begin_line(part.format_value(self.trailer))
 
 
 class ZConfigSection(_NamedValues, ZConfigSnippet):
@@ -263,26 +290,28 @@ class ZConfigSection(_NamedValues, ZConfigSnippet):
         self.values.pop('APPEND', None)
         self.name = _section_key
         self.zconfig_name = _section_name
-        self.sections = sections
+        self.sections = [copy(s) for s in sections]
+        for s in self.sections:
+            s.__parent__ = self
 
-    def _write_values(self, io):
+    def _write_values(self, io, part):
         with io.indented(self._body_indention):
-            super(ZConfigSection, self)._write_values(io)
+            super(ZConfigSection, self)._write_values(io, part)
 
-    def _write_header(self, io):
-        io.begin_line('<', self.format_value(self.name))
+    def _write_header(self, io, part):
+        io.begin_line('<', part.format_value(self.name))
         if self.zconfig_name:
-            io.append(' ', self.format_value(self.zconfig_name))
+            io.append(' ', part.format_value(self.zconfig_name))
         io.append('>')
 
         with io.indented('    '):
             for section in self.sections:
                 section.write_to(io)
 
-    def _write_trailer(self, io):
-        ZConfigSnippet._write_trailer(self, io)
+    def _write_trailer(self, io, part):
+        ZConfigSnippet._write_trailer(self, io, part)
         io.begin_line("</",
-                      self.format_value(self.name),
+                      part.format_value(self.name),
                       '>')
 
 
@@ -337,6 +366,7 @@ class _HyphenatedRef(Ref):
     hyphenated = True
 
 class _Const(_Contained):
+    hyphenated = False
 
     def __init__(self, const):
         self.const = const
@@ -350,8 +380,37 @@ class _Const(_Contained):
     def __str__(self):
         return str(self.const)
 
+    def hyphenate(self):
+        inst = type(self)(self.const)
+        inst.hyphenated = True
+        return inst
+
 class hyphenated(_Const):
     hyphenated = True
+
+class Default(_Const):
+    """
+    A default value is a type of constant that will defer to a
+    setting in its part's inheritance hierarchy if one is available.
+
+    The setting will always be the same as what this object is
+    bound to in its class, but the name that gets written to
+    ZCML may be hyphenated.
+    """
+
+    _bound_name = None
+
+    def __set_name__(self, klass, name):
+        # Called in 3.6+
+        self._bound_name = name
+
+    def __get__(self, inst, cls):
+        return self
+
+    def format_for_part(self, part):
+        part.add_default(self._bound_name, self.const)
+        return RelativeRef(self._bound_name).format_for_part(part)
+
 
 class renamed(object):
 

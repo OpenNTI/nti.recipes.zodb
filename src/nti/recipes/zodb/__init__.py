@@ -13,6 +13,7 @@ from ._model import ZConfigSection
 from ._model import Ref
 from ._model import ChoiceRef
 from ._model import Part
+from ._model import Default
 from ._model import hyphenated
 
 class MetaRecipe(object):
@@ -73,7 +74,7 @@ class zodb(ZConfigSection):
     # DB.connectionDebugInfo() can show this: connections in the pool
     # have 'opened' of None, while those in use have a timestamp and the length
     # of time it's been open.
-    pool_size = hyphenated(60)
+    pool_size = Default(60).hyphenate()
     database_name = Ref('name').hyphenate()
     cache_size = Ref('cache-size').hyphenate()
 
@@ -85,13 +86,16 @@ class deployment(object):
     etc = Ref('deployment', 'etc-directory')
 
 class ZodbClientPart(Part):
-    cache_size = hyphenated(100000)
+    cache_size = Default(100000).hyphenate()
     name = 'BASE'
 
 class MultiStorageRecipe(MetaRecipe):
     # Base recipe for deriving multiple storages
     # from a single call to this recipe.
-    # All of our work is done during __init__.
+    # All of our work is done during __init__. All options in this
+    # part (except for 'storages' and 'recipe') are copied to <name> + _opts_base
+    # (which must not already exist) new parts can extend this to copy
+    # options from here.
 
     # References to hardcoded paths such as /etc/
     # come from the standard ``deployment`` section
@@ -119,6 +123,12 @@ class MultiStorageRecipe(MetaRecipe):
         # Likewise, but referring to settings that define a <zodb>
         # element as a string.
         self._zodb_refs = set()
+
+        buildout[self.my_name + '_opts_base'] = {
+            k: v
+            for k, v in my_options.items()
+            if k not in ('recipe', 'storages')
+        }
 
     def create_directory(self, part, setting):
         self._dirs_to_create_refs.add(Ref(part, setting))

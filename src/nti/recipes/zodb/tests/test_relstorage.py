@@ -13,33 +13,22 @@ from hamcrest import contains_string
 
 from nti.recipes.zodb.relstorage import Databases
 
-from . import NoDefaultBuildout
+from . import default_buildout
 
 def setup_buildout_environment(**extra_options):
-    # You CANNOT make a change to a section after it's constructed
-    # here and expect sections that extend it to see the change. The original
-    # raw data is cached in a few places.
-    extra_options = extra_options or {}
-    buildout = NoDefaultBuildout()
-    sections = dict(
-        deployment={
-            'etc-directory': '/etc',
-            'data-directory': '/data',
-            'cache-directory': '/caches'
-        },
-        relstorages_opts={
-            'sql_user': 'BAZ',
-            'pack-gc': 'true'
-        },
-        relstorages_users_storage_opts={
-            'sql_user': 'FOO',
-            'pack-gc': 'false'
-        },
+    return default_buildout(
+        default_sections=dict(
+            relstorages_opts={
+                'sql_user': 'BAZ',
+                'pack-gc': 'true'
+            },
+            relstorages_users_storage_opts={
+                'sql_user': 'FOO',
+                'pack-gc': 'false'
+            },
+        ),
+        **extra_options
     )
-    for k in sections:
-        sections[k].update(extra_options.get(k, {}))
-        buildout[k] = sections[k]
-    return buildout
 
 class TestDatabases(unittest.TestCase):
 
@@ -204,8 +193,8 @@ class TestDatabases(unittest.TestCase):
 </zlibstorage>
 </zodb>"""
         self.assertEqual(
+            expected,
             buildout['relstorages_sessions_storage']['client_zcml'],
-            expected
         )
 
     def test_parse_postgres(self):
@@ -257,9 +246,106 @@ class TestDatabases(unittest.TestCase):
 </zodb>"""
 
         self.assertEqual(
-            buildout['relstorages_sessions_storage']['client_zcml'],
-            expected
+            expected,
+            buildout['relstorages_sessions_storage']['client_zcml']
         )
+
+    def test_parse_override_defaults_local(self):
+        buildout = self.buildout
+        buildout['environment'] = {
+            'sql_user': 'user',
+            'sql_passwd': 'passwd',
+            'sql_host': 'host',
+        }
+        buildout['relstorages_sessions_storage_opts'] = {
+            'pool_size': 13,
+            'commit_lock_timeout': 42,
+        }
+        Databases(buildout, 'relstorages', {
+            'storages': 'Sessions',
+        })
+
+        expected = """\
+<zodb Sessions>
+  cache-size 100000
+  database-name Sessions
+  pool-size 13
+  <zlibstorage Sessions>
+    <relstorage Sessions>
+        <mysql>
+          # This comment preserves whitespace
+          db Sessions
+          host host
+          passwd passwd
+          user BAZ
+        </mysql>
+      blob-dir /data/Sessions.blobs
+      cache-local-dir /caches/data_cache/Sessions.cache
+      cache-local-mb 300
+      cache-prefix Sessions
+      commit-lock-timeout 42
+      keep-history false
+      name Sessions
+      pack-gc true
+      shared-blob-dir false
+    </relstorage>
+  compress false
+</zlibstorage>
+</zodb>"""
+
+        self.assertEqual(
+            expected,
+            buildout['relstorages_sessions_storage']['client_zcml']
+        )
+
+    def test_parse_override_defaults_part(self):
+        buildout = self.buildout
+        buildout['environment'] = {
+            'sql_user': 'user',
+            'sql_passwd': 'passwd',
+            'sql_host': 'host',
+        }
+
+        Databases(buildout, 'relstorages', {
+            'storages': 'Sessions',
+            'pool_size': 13,
+            'commit_lock_timeout': 42,
+            'cache_size': 345,
+        })
+
+        expected = """\
+<zodb Sessions>
+  cache-size 345
+  database-name Sessions
+  pool-size 13
+  <zlibstorage Sessions>
+    <relstorage Sessions>
+        <mysql>
+          # This comment preserves whitespace
+          db Sessions
+          host host
+          passwd passwd
+          user BAZ
+        </mysql>
+      blob-dir /data/Sessions.blobs
+      cache-local-dir /caches/data_cache/Sessions.cache
+      cache-local-mb 300
+      cache-prefix Sessions
+      commit-lock-timeout 42
+      keep-history false
+      name Sessions
+      pack-gc true
+      shared-blob-dir false
+    </relstorage>
+  compress false
+</zlibstorage>
+</zodb>"""
+
+        self.assertEqual(
+            expected,
+            buildout['relstorages_sessions_storage']['client_zcml']
+        )
+
 
     def test_parse_no_secondary_cache(self):
         # No verification, just sees if it runs
@@ -341,8 +427,9 @@ class TestDatabases(unittest.TestCase):
 </zlibstorage>
 </zodb>"""
         self.assertEqual(
+            expected,
             buildout['relstorages_users_storage']['client_zcml'],
-            expected)
+        )
         expected = """\
 <zodb Sessions>
   cache-size 100000

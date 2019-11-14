@@ -22,6 +22,11 @@
   ``${buildout:directory}/var/log`` directly, refer
   to ``${deployment:run-directory}`` and ``${deployment:log-directory}``.
 
+- All storages: Make previously hard-coded values configurable. This
+  includes ``pool-size`` (``pool_size``), ``commit-lock-timeout``
+  (``commit_lock_timeout_``) and ``cache-size`` (``cache_size``).
+  These values can be set in the recipe, in the ``_opts`` section, or
+  in the ``_opts`` section for a particular storage.
 
 1.0.0a1 (2019-11-14)
 ====================
