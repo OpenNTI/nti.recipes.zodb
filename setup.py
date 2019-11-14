@@ -1,4 +1,4 @@
-import codecs
+import os
 from setuptools import setup, find_packages
 
 VERSION = '0.0.0'
@@ -15,15 +15,28 @@ TESTS_REQUIRE = [
     'zope.testrunner',
 ]
 
+def read_file(*path):
+    base_dir = os.path.dirname(__file__)
+    file_path = (base_dir, ) + tuple(path)
+    with open(os.path.join(*file_path)) as f:
+        result = f.read()
+    return result
+
 setup(
     name='nti.recipes.zodb',
     version=VERSION,
     author='Jason Madden',
     author_email='open-source@nextthought.com',
     description="zc.buildout recipes for RelStorage and ZEO",
-    long_description=codecs.open('README.rst', encoding='utf-8').read(),
+    long_description=read_file('README.rst'),
     license='Proprietary',
     keywords='buildout relstorage ZEO',
+    url="https://github.com/NextThought/nti.recipes.zodb",
+    project_urls={
+        'Bug Tracker': 'https://github.com/NextThought/nti.recipes.zodb/issues',
+        'Source Code': 'https://github.com/NextThought/nti.recipes.zodb/',
+        #'Documentation': 'https://ntirecipeszodb.readthedocs.io',
+    },
     classifiers=[
         'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
@@ -38,7 +51,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
-        'Topic :: Software Development :: Testing'
+        'Topic :: Software Development :: Testing',
         'Framework :: Buildout',
     ],
     packages=find_packages('src'),
