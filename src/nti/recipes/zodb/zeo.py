@@ -9,90 +9,109 @@ from __future__ import print_function
 from __future__ import absolute_import
 from __future__ import division
 
-from . import MetaRecipe
+from . import MultiStorageRecipe
+from . import deployment
+from . import serverzlibstorage
+from . import filestorage
+from . import ZodbClientPart
+from . import zodb
+
+from ._model import hyphenated
+from ._model import Part
+from ._model import Ref
+from ._model import ZConfigSection
+from ._model import renamed
 
 logger = __import__('logging').getLogger(__name__)
 
 
-_base_storage = """
-[base_storage]
-name = BASE
-number = 0
-data_dir = ${deployment:data-directory}
-blob_dir = ${:data_dir}/${:name}.blobs
-data_file = ${:data_dir}/${:name}.fs
-pack-gc = false
-server_zcml =
-        <serverzlibstorage ${:number}>
-            <filestorage ${:number}>
-                path ${:data_file}
-                blob-dir ${:blob_dir}
-                pack-gc ${:pack-gc}
-            </filestorage>
-        </serverzlibstorage>
 
-"""
+class BaseStoragePart(Part):
+    name = 'BASE'
+    number = 0
+    data_dir = deployment.data
+    blob_dir = Ref('data_dir') / Ref('name') + '.blobs'
+    data_file = Ref('data_dir') / Ref('name') + '.fs'
+    pack_gc = hyphenated(False)
+    server_zcml = None
+
 # client and storage have to be separate to avoid a dep loop
-_base_client = """
-[base_client]
-<= base_storage
-pool_size = 7
-cache-size = 75000
-name = BASE
-client_zcml =
-        <zodb ${:name}>
-            pool-size ${:pool_size}
-            database-name ${:name}
-            cache-size ${:cache-size}
-            <zlibstorage>
-                <zeoclient>
-                    server ${base_zeo:clientPipe}
-                    shared-blob-dir True
-                    blob-dir ${:blob_dir}
-                    storage 1
-                    name ${:name}
-                </zeoclient>
-            </zlibstorage>
-        </zodb>
-"""
 
-_zeo = """
-[base_zeo]
-name = %s
-recipe = zc.zodbrecipes:server
-clientPipe = ${buildout:directory}/var/zeosocket
-logFile = ${buildout:directory}/var/log/zeo.log
-zeo.conf =
-        %%import zc.zlibstorage
-        <zeo>
-            address ${:clientPipe}
-        </zeo>
+class BaseClientPart(ZodbClientPart):
+    client_zcml = None
 
-        %s
+class zeoclient(ZConfigSection):
+    def __init__(self, **kwargs):
+        ZConfigSection.__init__(self, 'zeoclient', None, **kwargs)
 
-        <eventlog>
-            <logfile>
-                path ${:logFile}
-                format %%(asctime)s %%(message)s
-                level DEBUG
-            </logfile>
-        </eventlog>
-deployment = deployment
-"""
+class zeo(ZConfigSection):
+    def __init__(self, address):
+        ZConfigSection.__init__(
+            self, 'zeo', None,
+            address=address
+        )
 
-class Databases(MetaRecipe):
+class eventlog(ZConfigSection):
+    def __init__(self):
+        logfile = ZConfigSection(
+            'logfile', None,
+            path=Ref('logFile'),
+            format="%(asctime)s %(message)s",
+            level='DEBUG',
+        )
+        ZConfigSection.__init__(
+            self,
+            'eventlog', None, logfile
+        )
+
+class BaseZeoPart(Part):
+    name = None
+    recipe = 'zc.zodbrecipes:server'
+    clientPipe = Ref('deployment', 'run-directory') / 'zeosocket'
+    logFile = Ref('deployment', 'log-directory') / 'zeo.log'
+    zeoConf = renamed('zeo.conf')
+    deployment = 'deployment'
+
+class Databases(MultiStorageRecipe):
 
     def __init__(self, buildout, name, options):
+        MultiStorageRecipe.__init__(self, buildout, name, options)
         storages = options['storages'].split()
         zeo_name = options.get('name', 'Dataserver')
 
         # Order matters
-        buildout.parse(_base_storage)
+        base_storage_part = BaseStoragePart(
+            self._derive_related_part_name('base_storage'),
+            server_zcml=self.zlibstorage_wrapper(
+                filestorage(
+                    Ref('number'),
+                    path=Ref('data_file'),
+                    blob_dir=Ref("blob_dir"),
+                    pack_gc=Ref("pack-gc").hyphenate()
+                ),
+                serverzlibstorage
+            )
+        )
+        self._parse(base_storage_part)
 
+        base_client_part = BaseClientPart(
+            self._derive_related_part_name('base_client'),
+            extends=(base_storage_part,),
+            client_zcml=zodb(
+                Ref('name'),
+                self.zlibstorage_wrapper(
+                    zeoclient(
+                        server=BaseZeoPart.clientPipe,
+                        shared_blob_dir=hyphenated(True),
+                        blob_dir=hyphenated(self.ref('blob_dir')),
+                        storage=1,
+                        name=self.ref('name'),
+                    )
+                )
+            )
+        )
 
-        blob_paths = []
-        zeo_uris = []
-        client_zcml_names = []
+        self._parse(base_client_part)
         server_zcml_names = []
         zodb_file_uris = []
         client_parts = []
@@ -109,38 +128,42 @@ class Databases(MetaRecipe):
         for i, storage in enumerate(storages):
             # storages begin at 1
             i = i + 1
-            storage_part_name = storage.lower() + '_storage'
-            buildout.parse("""
-            [%s]
-            <= base_storage
-            name = %s
-            number = %d
-            pack-gc = %s
-            """ % (storage_part_name, storage, i, options.get('pack-gc', 'false')))
+            storage_part = Part(
+                storage.lower() + '_storage',
+                extends=(base_storage_part,),
+                name=storage,
+                number=i,
+                pack_gc=hyphenated(options.get('pack-gc', False))
+            )
+            self._parse(storage_part)
 
-            client_part_name = storage.lower() + '_client'
-            client_parts.append(("""
-            [%s]
-            <= %s
-               base_client
-            name = %s
-            """ % (client_part_name, storage_part_name, storage),
-                                 client_part_name))
+            client_part = Part(
+                storage.lower() + '_client',
+                extends=(storage_part, base_client_part),
+                name=storage.lower() + '_client',
+            )
+            client_parts.append(client_part)
 
+            self.create_directory(storage_part.name, 'blob_dir')
+            self.add_database(client_part.name, 'client_zcml')
 
-            blob_paths.append("${%s:blob_dir}" % storage_part_name)
-            client_zcml_names.append("${%s:client_zcml}" % client_part_name)
-            server_zcml_names.append("${%s:server_zcml}" % storage_part_name)
+            server_zcml_names.append(storage_part['server_zcml'].ref())
+            zodb_file_uris.append(base_file_uri % {'part': client_part.name})
 
-            zeo_uris.append("zconfig://${zodb_conf:output}#%s" % storage.lower())
+        base_zeo_part = BaseZeoPart(
+            'base_zeo',
+            name=zeo_name,
+            zeoConf=[
+                self.zlibstorage_import(),
+                zeo(self.ref('clientPipe')),
+            ] + server_zcml_names + [
+                eventlog(),
+            ],
+        )
 
-            zodb_file_uris.append(base_file_uri % {'part': client_part_name})
+        self._parse(base_zeo_part)
 
-        # Indents must match or we get parsing errors, hence
-        # the tabs
-        buildout.parse(_zeo % (zeo_name, '\n        '.join(server_zcml_names)))
-        buildout.parse(_base_client)
-        for client, _part_name in client_parts:
+        for client in client_parts:
             # We'd like for users to be able to overdide
             # our settings in their default.cfg, like they can
             # with normal sections. This is a problem for a few reasons.
@@ -154,42 +177,20 @@ class Databases(MetaRecipe):
             # and force them to all be the same for all storages)
             # For now, make it cause the parse error if attempted so
             # people don't expect it to work.
+            self._parse(client)
 
-            buildout.parse(client)
+        self.buildout_add_zodb_conf()
+        self.buildout_add_zeo_uris()
 
-        buildout.parse("""
-        [zodb_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zodb_conf.xml
-        input = inline:
-                %%import zc.zlibstorage
-                %%import relstorage
+        self._parse(Part(
+            'zodb_direct_file_uris_conf',
+            recipe='collective.recipe.template',
+            output=deployment.etc / 'zodb_file_uris.ini',
+            input=[
+                'inline:',
+                '[ZODB]',
+                'uris = %s' % ' '.join(zodb_file_uris)
+            ]
+        ))
 
-                %s
-        """ % '\n                '.join(client_zcml_names))
-
-        buildout.parse("""
-        [zodb_uri_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zeo_uris.ini
-        input = inline:
-              [ZODB]
-              uris = %s
-        """ % ' '.join(zeo_uris))
-
-        buildout.parse("""
-        [zodb_direct_file_uris_conf]
-        recipe = collective.recipe.template
-        output = ${deployment:etc-directory}/zodb_file_uris.ini
-        input = inline:
-              [ZODB]
-              uris = %s
-        """ % ' '.join(zodb_file_uris))
-
-        buildout.parse("""
-        [zeo_dirs]
-        recipe = z3c.recipe.mkdir
-        paths =
-            %s
-        mode = 0700
-        """ % '\n            '.join(blob_paths))
+        self.buildout_add_mkdirs()
