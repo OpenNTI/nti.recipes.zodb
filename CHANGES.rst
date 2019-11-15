@@ -28,6 +28,11 @@
   These values can be set in the recipe, in the ``_opts`` section, or
   in the ``_opts`` section for a particular storage.
 
+- RelStorage PostgreSQL: Automatically use a correct DSN based on the
+  configured host, port, dbname and password if no ``dsn`` setting is
+  specified. Previously it was complex to specify a DSN using
+  configurable values.
+
 1.0.0a1 (2019-11-14)
 ====================
 

@@ -225,6 +225,66 @@ class Databases(MultiStorageRecipe):
         self.buildout_add_zodb_conf()
         self.buildout_add_zeo_uris()
 
+    def __clear_top_level_inherited_adapter_settings(self, sql_adapter_args):
+        for k in BaseStoragePart.sql_adapter_args.keys():
+            sql_adapter_args.pop(k, None)
+
+    def _adapter_settings_for_sqlite3(self, part, sql_adapter_args):
+        # sqlite resides on a single machine. No need to duplicate
+        # blobs both in the DB and in the blob cache. This reduces parallel
+        # commit, but it's not really parallel anyway.
+        # Note that we DO NOT add the data-dir to the list of directories to create.
+        # Uninstalling this part should not remove that directory, which is
+        # what would happen if we added it.
+
+        # Top-level settings which we got by default have to go; there are none.
+        self.__clear_top_level_inherited_adapter_settings(sql_adapter_args)
+        sql_adapter_args.addValue('data-dir', str(part['data_dir']) + '/' + part.name)
+        return {
+            'shared-blob-dir': True
+        }
+
+    def _adapter_settings_for_postgresql(self, part, sql_adapter_args):
+        # If no DSN is specified in the sql_adapter_args then we compute one.
+        if 'dsn' in sql_adapter_args:
+            return {}
+        # Hoist everything present by default into the dsn. Resolve them now so that we don't
+        # put in empty fields and can use defaults.
+        def resolve(obj):
+            if isinstance(obj, SubstVar):
+                if not obj.part: # Relative.
+                    return resolve(part.get(obj.setting))
+                # buildout values are already fully resolved
+                return self.buildout[obj.part][obj.setting] # pragma: no cover
+            return obj
+        dsn = ' '
+        for dsn_key, setting_key in (
+                ('dbname', 'db'),
+                ('user', 'user',),
+                ('password', 'passwd'),
+                ('host', 'host')
+        ):
+            setting = sql_adapter_args.pop(setting_key)[0]
+            setting = resolve(setting)
+            if setting:
+                dsn += "%s='%s' " % (dsn_key, setting)
+        dsn = dsn.strip()
+
+        self.__clear_top_level_inherited_adapter_settings(sql_adapter_args)
+
+        if 'sql_port' in sql_adapter_args:
+            # Note no quotes
+            dsn += ' port=%s' % (resolve(sql_adapter_args['sql_port'][0]))
+            sql_adapter_args.pop('sql_port')
+
+        sql_adapter_args.addValue('dsn', dsn)
+        # No special settings to return, everything is in the mutated sql_adapter_args
+        return {}
+
+    def _adapter_settings_for_mysql(self, part, sql_adapter_args):
+        # Our default is set up for MySQL
+        return {}
+
     def __adapter_settings(self, part):
         # sql adapter args could be dict-like if its our default template,
         # or it could be a string if it's specified by the user to replace our default
@@ -237,19 +297,8 @@ class Databases(MultiStorageRecipe):
                 k: [v] for k, v in sql_adapter_args.items()
             })
 
-        settings = {}
-        if part.get('sql_adapter') == 'sqlite3':
-            # sqlite resides on a single machine. No need to duplicate
-            # blobs both in the DB and in the blob cache. This reduces parallel
-            # commit, but it's not really parallel anyway.
-            # Note that we DO NOT add the data-dir to the list of directories to create.
-            # Uninstalling this part should not remove that directory, which is
-            # what would happen if we added it.
-            sql_adapter_args.clear()
-            sql_adapter_args.addValue('data-dir', str(part['data_dir']) + '/' + part.name)
-            settings['shared-blob-dir'] = True
-
         # Inline the sql_adapter_extra_args here so we can verify them as valid
+        # and so the db-specific functions get an entire view
         extra_args = part['sql_adapter_extra_args']
         if hasattr(extra_args, 'const'):
             extra_args = extra_args.const
@@ -258,6 +307,9 @@ class Databases(MultiStorageRecipe):
             for k, v in config.items():
                 sql_adapter_args[k] = v
             sql_adapter_args.sections.extend(config.sections)
+
+        adapter_name = str(part.get('sql_adapter'))
+        settings = getattr(self, '_adapter_settings_for_' + adapter_name)(part, sql_adapter_args)
 
         settings['sql_adapter_args'] = sql_adapter_args
         return settings

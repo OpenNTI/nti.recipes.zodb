@@ -371,6 +371,11 @@ class _Const(_Contained):
     def __init__(self, const):
         self.const = const
 
+    def __bool__(self):
+        return self.const is not None
+
+    __nonzero__ = __bool__
+
     def lower(self):
         return self.const.lower()
 
