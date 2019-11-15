@@ -57,7 +57,7 @@ class relstorage(ZConfigSection):
         )
 
 class BaseStoragePart(ZodbClientPart):
-    blob_cache_size = hyphenated(None)
+    blob_cache_size = Default(None).hyphenate()
     blob_dir = LocalSubstVar('data_dir') / LocalSubstVar('name') + '.blobs'
     blob_dump_dir = (
         LocalSubstVar('data_dir')
@@ -66,7 +66,7 @@ class BaseStoragePart(ZodbClientPart):
         / 'blobs'
     )
     cache_local_dir = hyphenated(None)
-    cache_local_mb = hyphenated(None)
+    cache_local_mb = Default(300).hyphenate()
 
     commit_lock_timeout = Default(60)
     data_dir = SubstVar('deployment', 'data-directory')
@@ -74,9 +74,14 @@ class BaseStoragePart(ZodbClientPart):
     dump_name = LocalSubstVar('name')
     filestorage_name = 'NONE'
     name = 'BASE'
-    pack_gc = hyphenated(False)
+    pack_gc = Default(False).hyphenate()
     relstorage_name_prefix = hyphenated(None)
-    shared_blob_dir = hyphenated(False)
+    # Prior to RelStorage 3, by default, relstorage assumes a shared blob
+    # directory. However, our most common use case here
+    # is not to share. While using either wrong setting
+    # in an environment is dangerous and can lead to data loss,
+    # it's slightly worse to assume shared when its not
+    shared_blob_dir = Default(False).hyphenate()
 
     sql_db = LocalSubstVar('name')
     sql_adapter_args = ZConfigSnippet(
@@ -115,14 +120,6 @@ class Databases(MultiStorageRecipe):
         sql_host = options.get('sql_host') or environment.get('sql_host')
         sql_adapter = options.get('sql_adapter') or 'mysql'
 
-        # by default, relstorage assumes a shared blob
-        # directory. However, our most common use case here
-        # is not to share. While using either wrong setting
-        # in an environment is dangerous and can lead to data loss,
-        # it's slightly worse to assume shared when its not
-        if 'shared-blob-dir' not in options:
-            options['shared-blob-dir'] = 'false'
-        shared_blob_dir = options['shared-blob-dir']
 
         cache_local_dir = ''
         if _option_true(options.get('enable-persistent-cache', 'true')):
@@ -132,10 +129,6 @@ class Databases(MultiStorageRecipe):
             # avoid taking any user-defined values since it might be
             # confusing to have one (count limited) directory for all storages.
             cache_local_dir = '${deployment:cache-directory}/data_cache/${:name}.cache'
-        cache_local_mb = options.get('cache-local-mb', '300')
-
-        blob_cache_size = options.get('blob-cache-size', '')
-        pack_gc = options.get('pack-gc', 'false')
 
         # Utilizing the built in memcache capabilites is not
         # beneficial in all cases. In fact it rarely is. It's
@@ -160,7 +153,7 @@ class Databases(MultiStorageRecipe):
 
         relstorage_zcml = self.zlibstorage_wrapper(relstorage(remote_cache_config))
         filestorage_zcml = self.zlibstorage_wrapper(filestorage(self.ref('filestorage_name')))
-
+        blob_cache_size = options.get('blob-cache-size', '')
         # Order matters
         base_storage_name = name + '_base_storage'
 
@@ -173,15 +166,13 @@ class Databases(MultiStorageRecipe):
             storage_zcml=relstorage_zcml,
             client_zcml=zodb(self.ref('name'), self.ref('storage_zcml')),
             filestorage_zcml=filestorage_zcml,
-            shared_blob_dir=shared_blob_dir,
             relstorage_name_prefix=relstorage_name_prefix,
             cache_local_dir=cache_local_dir,
-            cache_local_mb=cache_local_mb,
             blob_cache_size=blob_cache_size,
-            pack_gc=pack_gc,
             **extra_base_kwargs
         )
 
+        # TODO: Let this be configured for each storage.
         if not blob_cache_size:
             del base_storage_part['blob-cache-size']
             zcml = base_storage_part['storage_zcml']
@@ -211,6 +202,7 @@ class Databases(MultiStorageRecipe):
                 name=storage,
             )
 
+
             part = part.with_settings(**self.__adapter_settings(part))
             self._parse(part)
 
@@ -224,6 +216,15 @@ class Databases(MultiStorageRecipe):
         self.buildout_add_mkdirs(name='blob_dirs')
         self.buildout_add_zodb_conf()
         self.buildout_add_zeo_uris()
+
+    def _resolve(self, part, obj):
+        if isinstance(obj, SubstVar):
+            if not obj.part: # Relative.
+                return self._resolve(part, part.get(obj.setting))
+            # buildout values are already fully resolved
+            return self.buildout[obj.part][obj.setting] # pragma: no cover
+        return obj
+
 
     def __clear_top_level_inherited_adapter_settings(self, sql_adapter_args):
         for k in BaseStoragePart.sql_adapter_args.keys():
@@ -251,12 +252,7 @@ class Databases(MultiStorageRecipe):
         # Hoist everything present by default into the dsn. Resolve them now so that we don't
         # put in empty fields and can use defaults.
         def resolve(obj):
-            if isinstance(obj, SubstVar):
-                if not obj.part: # Relative.
-                    return resolve(part.get(obj.setting))
-                # buildout values are already fully resolved
-                return self.buildout[obj.part][obj.setting] # pragma: no cover
-            return obj
+            return self._resolve(part, obj)
         dsn = ' '
         for dsn_key, setting_key in (
                 ('dbname', 'db'),

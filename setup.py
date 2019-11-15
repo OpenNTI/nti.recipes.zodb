@@ -11,7 +11,11 @@ entry_points = {
 
 TESTS_REQUIRE = [
     'PyHamcrest',
+    'collective.recipe.template',
+    'z3c.recipe.mkdir',
+    'zope.testing',
     'zope.testrunner',
+    'zdaemon',
 ]
 
 def read_file(*path):

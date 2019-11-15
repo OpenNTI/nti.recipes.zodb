@@ -57,7 +57,7 @@ class eventlog(ZConfigSection):
             'logfile', None,
             path=Ref('logFile'),
             format="%(asctime)s %(message)s",
-            level='DEBUG',
+            level="DEBUG",
         )
         ZConfigSection.__init__(
             self,
@@ -73,11 +73,12 @@ class BaseZeoPart(Part):
     deployment = 'deployment'
 
 class Databases(MultiStorageRecipe):
+    import_relstorage = ''
 
     def __init__(self, buildout, name, options):
         MultiStorageRecipe.__init__(self, buildout, name, options)
         storages = options['storages'].split()
-        zeo_name = options.get('name', 'Dataserver')
+        zeo_name = options.get('name', name)
 
         # Order matters
         base_storage_part = BaseStoragePart(
@@ -97,6 +98,7 @@ class Databases(MultiStorageRecipe):
         base_client_part = BaseClientPart(
             self._derive_related_part_name('base_client'),
             extends=(base_storage_part,),
+            storage_num=1,
             client_zcml=zodb(
                 Ref('name'),
                 self.zlibstorage_wrapper(
@@ -104,7 +106,7 @@ class Databases(MultiStorageRecipe):
                         server=BaseZeoPart.clientPipe,
                         shared_blob_dir=hyphenated(True),
                         blob_dir=hyphenated(self.ref('blob_dir')),
-                        storage=1,
+                        storage=self.ref('storage_num'),
                         name=self.ref('name'),
                     )
                 )
@@ -158,7 +160,8 @@ class Databases(MultiStorageRecipe):
             client_part = Part(
                 client_part_name,
                 extends=client_part_extends,
-                name=client_part_name
+                name=client_part_name,
+                storage_num=i,
             )
             client_parts.append(client_part)
 
