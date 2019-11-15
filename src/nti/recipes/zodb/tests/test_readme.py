@@ -22,7 +22,7 @@ def test_suite():
     root = this_dir = os.path.dirname(os.path.abspath(__file__))
     while not os.path.exists(os.path.join(root, 'setup.py')):
         prev, root = root, os.path.dirname(root)
-        if root == prev:
+        if root == prev: # pragma: no cover
             # Let's avoid infinite loops at root
             raise AssertionError('could not find my setup.py')
 
