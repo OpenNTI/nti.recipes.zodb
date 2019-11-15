@@ -2,7 +2,7 @@
  Changes
 =========
 
-1.0.0a2 (unreleased)
+1.0.0a2 (2019-11-15)
 ====================
 
 - RelStorage: The value of ``sql_adapter_extra_args`` is validated to
