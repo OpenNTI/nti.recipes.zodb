@@ -36,7 +36,7 @@ class TestDatabases(unittest.TestCase):
         name users_1_client
         server /var/zeosocket
         shared-blob-dir true
-        storage 1
+        storage 2
       </zeoclient>
     compress false
   </zlibstorage>
@@ -105,7 +105,7 @@ class TestDatabases(unittest.TestCase):
     name users_1_client
     server /var/zeosocket
     shared-blob-dir true
-    storage 1
+    storage 2
   </zeoclient>
 </zodb>"""
 

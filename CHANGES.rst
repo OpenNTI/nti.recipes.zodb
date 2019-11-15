@@ -33,6 +33,10 @@
   specified. Previously it was complex to specify a DSN using
   configurable values.
 
+- RelStorage: Make ``shared_blob_dir``, ``cache_local_mb`` and
+  ``pack_gc`` be configurable at the storage level instead of just the
+  recipe part level.
+
 1.0.0a1 (2019-11-14)
 ====================
 
