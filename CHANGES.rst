@@ -2,7 +2,7 @@
  Changes
 =========
 
-1.0.0a3 (unreleased)
+1.0.0a3 (2019-11-18)
 ====================
 
 - ZEO: Fix a mismatch in case and storage names for the client ZCML in
