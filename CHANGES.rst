@@ -5,7 +5,8 @@
 1.0.0a3 (unreleased)
 ====================
 
-- Nothing changed yet.
+- ZEO: Fix a mismatch in case and storage names for the client ZCML in
+  zodb_conf.xml. See `issue 17 <https://github.com/NextThought/nti.recipes.zodb/issues/17>`_.
 
 
 1.0.0a2 (2019-11-15)

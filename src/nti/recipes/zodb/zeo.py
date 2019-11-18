@@ -160,7 +160,7 @@ class Databases(MultiStorageRecipe):
             client_part = Part(
                 client_part_name,
                 extends=client_part_extends,
-                name=client_part_name,
+                name=storage,
                 storage_num=i,
             )
             client_parts.append(client_part)

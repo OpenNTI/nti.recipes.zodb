@@ -26,14 +26,14 @@ class TestDatabases(unittest.TestCase):
                    'pack-gc': 'true'})
 
         expected = """\
-<zodb users_1_client>
+<zodb Users_1>
   cache-size 100000
-  database-name users_1_client
+  database-name Users_1
   pool-size 60
   <zlibstorage>
       <zeoclient>
-        blob-dir /data/users_1_client.blobs
-        name users_1_client
+        blob-dir /data/Users_1.blobs
+        name Users_1
         server /var/zeosocket
         shared-blob-dir true
         storage 2
@@ -96,13 +96,13 @@ class TestDatabases(unittest.TestCase):
             'compress': 'none',
         })
         expected = """\
-<zodb users_1_client>
+<zodb Users_1>
   cache-size 100000
-  database-name users_1_client
+  database-name Users_1
   pool-size 60
   <zeoclient>
-    blob-dir /data/users_1_client.blobs
-    name users_1_client
+    blob-dir /data/Users_1.blobs
+    name Users_1
     server /var/zeosocket
     shared-blob-dir true
     storage 2
@@ -158,13 +158,13 @@ class TestDatabases(unittest.TestCase):
         })
 
         expected = """\
-<zodb users_1_client>
+<zodb Users_1>
   cache-size 100000
-  database-name users_1_client
+  database-name Users_1
   pool-size 2
   <zeoclient>
-    blob-dir /data/users_1_client.blobs
-    name users_1_client
+    blob-dir /data/Users_1.blobs
+    name Users_1
     server /var/zeosocket
     shared-blob-dir true
     storage 1
@@ -186,13 +186,13 @@ class TestDatabases(unittest.TestCase):
         })
 
         expected = """\
-<zodb users_1_client>
+<zodb Users_1>
   cache-size 100000
-  database-name users_1_client
+  database-name Users_1
   pool-size 2
   <zeoclient>
-    blob-dir /data/users_1_client.blobs
-    name users_1_client
+    blob-dir /data/Users_1.blobs
+    name Users_1
     server /var/zeosocket
     shared-blob-dir true
     storage 1
