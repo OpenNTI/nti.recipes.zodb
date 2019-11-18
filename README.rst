@@ -213,6 +213,8 @@ the server location and account credentials.
           them encrypted instead.
 
 By default, the name of the database is the same as the storage name.
+The storage name's case is preserved (this matters for cross-database
+references.)
 
     >>> write(sample_buildout, 'buildout.cfg',
     ... """
@@ -227,7 +229,7 @@ By default, the name of the database is the same as the storage name.
     ...
     ... [relstorage]
     ... recipe = nti.recipes.zodb:relstorage
-    ... storages = users sessions
+    ... storages = Users Sessions
     ... compress = none
     ... """)
 
@@ -241,52 +243,55 @@ By default, the name of the database is the same as the storage name.
     -  zodb_conf.xml
     >>> cat(sample_buildout, 'etc', 'zodb_conf.xml')
     %import relstorage
-    <zodb users>
+    <zodb Users>
       cache-size 100000
-      database-name users
+      database-name Users
       pool-size 60
-      <relstorage users>
+      <relstorage Users>
         <mysql>
           # This comment preserves whitespace
-              db users
+              db Users
               host the_server
               passwd the_passwd
               user the_user
         </mysql>
-      blob-dir /sample-buildout/data/users.blobs
-      cache-local-dir /sample-buildout/var/caches/data_cache/users.cache
+      blob-dir /sample-buildout/data/Users.blobs
+      cache-local-dir /sample-buildout/var/caches/data_cache/Users.cache
       cache-local-mb 300
-      cache-prefix users
+      cache-prefix Users
       commit-lock-timeout 60
       keep-history false
-      name users
+      name Users
       pack-gc false
       shared-blob-dir false
     </relstorage>
     </zodb>
-    <zodb sessions>
+    <zodb Sessions>
       cache-size 100000
-      database-name sessions
+      database-name Sessions
       pool-size 60
-      <relstorage sessions>
+      <relstorage Sessions>
         <mysql>
           # This comment preserves whitespace
-              db sessions
+              db Sessions
               host the_server
               passwd the_passwd
               user the_user
         </mysql>
-      blob-dir /sample-buildout/data/sessions.blobs
-      cache-local-dir /sample-buildout/var/caches/data_cache/sessions.cache
+      blob-dir /sample-buildout/data/Sessions.blobs
+      cache-local-dir /sample-buildout/var/caches/data_cache/Sessions.cache
       cache-local-mb 300
-      cache-prefix sessions
+      cache-prefix Sessions
       commit-lock-timeout 60
       keep-history false
-      name sessions
+      name Sessions
       pack-gc false
       shared-blob-dir false
     </relstorage>
     </zodb>
+    >>> cat(sample_buildout, 'etc', 'zeo_uris.ini')
+    [ZODB]
+    uris = /sample-buildout/etc/zodb_conf.xml#users /sample-buildout/etc/zodb_conf.xml#sessions
 
 Much can be configured at both the recipe level and in a section named
 for the storage (prefixed with the name of the recipe, unlike in the
@@ -540,7 +545,7 @@ pack-gc
     ...
     ... [zeo]
     ... recipe = nti.recipes.zodb:zeo
-    ... storages = users sessions
+    ... storages = Users Sessions
     ... compress = none
     ... pack-gc = true
     ...
@@ -572,25 +577,25 @@ The ``zodb_conf.xml`` and ``zeo_uris.ini`` are created as for RelStorage (the ``
 prefixes are missing from the URIs because of a quirk in testing):
 
     >>> cat(sample_buildout, 'etc', 'zodb_conf.xml')
-    <zodb users_client>
+    <zodb Users>
       cache-size 100000
-      database-name users_client
+      database-name Users
       pool-size 25
       <zeoclient>
-        blob-dir /sample-buildout/data/users_client.blobs
-        name users_client
+        blob-dir /sample-buildout/data/Users.blobs
+        name Users
         server /sample-buildout/var/zeosocket
         shared-blob-dir true
         storage 1
       </zeoclient>
     </zodb>
-    <zodb sessions_client>
+    <zodb Sessions>
       cache-size 42
-      database-name sessions_client
+      database-name Sessions
       pool-size 60
       <zeoclient>
-        blob-dir /sample-buildout/data/sessions_client.blobs
-        name sessions_client
+        blob-dir /sample-buildout/data/Sessions.blobs
+        name Sessions
         server /sample-buildout/var/zeosocket
         shared-blob-dir true
         storage 2
@@ -632,15 +637,15 @@ This is the actual ZEO server configuration, again prefixed with the part name.
     </zeo>
     <BLANKLINE>
     <filestorage 1>
-      blob-dir /sample-buildout/data/users.blobs
+      blob-dir /sample-buildout/data/Users.blobs
       pack-gc true
-      path /sample-buildout/data/users.fs
+      path /sample-buildout/data/Users.fs
     </filestorage>
     <BLANKLINE>
     <filestorage 2>
-      blob-dir /sample-buildout/data/sessions.blobs
+      blob-dir /sample-buildout/data/Sessions.blobs
       pack-gc true
-      path /sample-buildout/data/sessions.fs
+      path /sample-buildout/data/Sessions.fs
     </filestorage>
     <BLANKLINE>
     <eventlog>
