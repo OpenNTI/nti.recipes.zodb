@@ -213,7 +213,7 @@ class Part(_NamedValues):
         of the precedence may replace this method to provide
         a lookup of the actual option value.
         """
-        return self.get(key, default)
+        return self.get(key, default) # pragma: no cover
 
     def __getitem__(self, key):
         try:
@@ -443,7 +443,7 @@ class NoDefault(Default):
         return ''
 
     def lower(self):
-        return ''
+        return '' # pragma: no cover
 
     __str__ = lower
 
