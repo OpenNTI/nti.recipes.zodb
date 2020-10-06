@@ -27,7 +27,7 @@ def read_file(*path):
 
 setup(
     name='nti.recipes.zodb',
-    version='1.0.0a4.dev0',
+    version='1.1.0.dev0',
     author='Jason Madden',
     author_email='open-source@nextthought.com',
     description="zc.buildout recipes for RelStorage and ZEO",
@@ -52,6 +52,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Topic :: Software Development :: Testing',

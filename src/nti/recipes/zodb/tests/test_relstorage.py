@@ -85,6 +85,7 @@ class TestDatabases(unittest.TestCase):
             'cache_servers': 'cache',
             'enable-persistent-cache': 'true',
             'compress': 'none',
+            'pool_timeout': '42',
         })
 
         assert_that(buildout['relstorages_users_storage']['client_zcml'],
@@ -118,6 +119,7 @@ class TestDatabases(unittest.TestCase):
   cache-size 100000
   database-name Users
   pool-size 60
+  pool-timeout 42
   <relstorage Users>
     <mysql>
       # This comment preserves whitespace
@@ -304,10 +306,16 @@ class TestDatabases(unittest.TestCase):
             'sql_passwd': 'passwd',
             'sql_host': 'host',
         }
+        # If this one isn't present, then
+        # the one from the most specific section isn't found at all.
+        # That's ok, this is the one that's documented.
+        buildout['relstorages_opts']['pool_timeout'] = '64s'
         buildout['relstorages_sessions_storage_opts'] = {
             'pool_size': 13,
+            'pool_timeout': 54, # This one is actually found
             'commit_lock_timeout': 42,
         }
+
         Databases(buildout, 'relstorages', {
             'storages': 'Sessions',
         })
@@ -317,6 +325,7 @@ class TestDatabases(unittest.TestCase):
   cache-size 100000
   database-name Sessions
   pool-size 13
+  pool-timeout 54
   <zlibstorage Sessions>
     <relstorage Sessions>
         <mysql>

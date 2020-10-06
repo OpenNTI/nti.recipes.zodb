@@ -2,10 +2,14 @@
  Changes
 =========
 
-1.0.0a4 (unreleased)
+1.1.0 (unreleased)
 ====================
 
-- Nothing changed yet.
+- Add support for Python 3.9.
+
+- Add support for configuring the ZODB ``pool-timeout`` value. See
+  `issue 19
+  <https://github.com/NextThought/nti.recipes.zodb/issues/19>`_.
 
 
 1.0.0a3 (2019-11-18)

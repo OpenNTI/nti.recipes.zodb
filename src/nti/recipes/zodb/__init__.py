@@ -14,6 +14,7 @@ from ._model import Ref
 from ._model import ChoiceRef
 from ._model import Part
 from ._model import Default
+from ._model import NoDefault
 
 class MetaRecipe(object):
     # Contains the base methods that are required of a recipe,
@@ -47,6 +48,7 @@ class serverzlibstorage(zlibstorage):
 
 class zodb(ZConfigSection):
     pool_size = Default(60).hyphenate()
+    pool_timeout = NoDefault().hyphenate()
     database_name = Ref('name').hyphenate()
     cache_size = Ref('cache-size').hyphenate()
 
@@ -96,7 +98,8 @@ class MultiStorageRecipe(MetaRecipe):
         # element as a string. Order matters.
         self._zodb_refs = []
 
-        buildout[self.my_name + '_opts_base'] = {
+        self.my_options_base_name = self.my_name + '_opts_base'
+        buildout[self.my_options_base_name] = {
             k: v
             for k, v in my_options.items()
             if k not in ('recipe', 'storages')
@@ -120,6 +123,26 @@ class MultiStorageRecipe(MetaRecipe):
             setting = part
             part = ''
         return Ref(part, setting)
+
+    def make_buildout_lookup(self, bases_or_base_names):
+        """
+        Return a function that can be used to find values
+        in other parts or existing buildout sections.
+
+        Use this to set a part's ``buildout_lookup`` function.
+        """
+        dne = object()
+        def buildout_lookup(key, default=None):
+            for base in reversed(bases_or_base_names):
+                try:
+                    get = base.get
+                except AttributeError:
+                    get = self.buildout.get(base, {}).get
+                result = get(key, dne)
+                if result is not dne:
+                    return result
+            return default
+        return buildout_lookup
 
     def choice_ref(self, section_map, setting):
         return ChoiceRef(section_map, setting)

@@ -202,3 +202,34 @@ class TestDatabases(unittest.TestCase):
         self.assertEqual(
             buildout['users_1_client']['client_zcml'],
             expected)
+
+
+    def test_parse_pool_timeout_in_recipe(self):
+        buildout = self.buildout
+
+        Databases(buildout, 'zeo', {
+            'storages': 'Users_1',
+            'pack-gc': 'true',
+            'compress': 'none',
+            'pool_size': '2',
+            'pool_timeout': '60',
+        })
+
+        expected = """\
+<zodb Users_1>
+  cache-size 100000
+  database-name Users_1
+  pool-size 2
+  pool-timeout 60
+  <zeoclient>
+    blob-dir /data/Users_1.blobs
+    name Users_1
+    server /var/zeosocket
+    shared-blob-dir true
+    storage 1
+  </zeoclient>
+</zodb>"""
+
+        self.assertEqual(
+            buildout['users_1_client']['client_zcml'],
+            expected)

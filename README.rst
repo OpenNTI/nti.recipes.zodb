@@ -140,12 +140,13 @@ used by both recipes and may be defined at a per-database level (see
 each recipe for an explanation of how). The defaults are built-in, but
 setting a value in the recipe part will provide a new default for all
 storages. Additionally, for backwards compatibility and composing
-buildout configurations, if there is a part named ``<part>_opts_``,
+buildout configurations, if there is a part named ``<part>_opts``,
 where ``<part>`` is the name of the recipe part, options defined there
 will override options defined in the recipe part, but will bee
 overridden by options defined for an individual storage.
 
-These two configurations both set the same ZODB cache size.
+These configuration options have to do with the ZODB connection pool
+and its caching.
 
 .. code:: ini
 
@@ -193,6 +194,14 @@ pool_size
     Calling DB.connectionDebugInfo() can show improperly sized pools:
     connections in the pool have 'opened' of None, while those in use
     have a timestamp and the length of time it's been open.
+pool_timeout
+    A time interval value (which accepts either a bare number of
+    integral seconds or an integer suffixed with one of the characters
+    's', 'm', 'h', 'd' for seconds, minutes, hours or days,
+    respectively) that specifies how long idle connections are allowed
+    to remain in the pool before being closed. Effectively, there is
+    no default meaning connections never time out.
+
 
 RelStorage
 ==========
@@ -323,6 +332,7 @@ blob-cache-size
     ... compress = none
     ... pack_gc = true
     ... commit_lock_timeout = 10
+    ... pool_timeout = 42s
     ...
     ... [relstorage_users_storage_opts]
     ... cache_size = 42
@@ -344,6 +354,7 @@ blob-cache-size
       cache-size 42
       database-name users
       pool-size 60
+      pool-timeout 42s
       <relstorage users>
         <mysql>
           # This comment preserves whitespace
@@ -367,6 +378,7 @@ blob-cache-size
       cache-size 100000
       database-name sessions
       pool-size 60
+      pool-timeout 42s
       <relstorage sessions>
         <mysql>
           # This comment preserves whitespace

@@ -112,6 +112,7 @@ class Databases(MultiStorageRecipe):
                 )
             )
         )
+        base_client_part.buildout_lookup = self.make_buildout_lookup([base_storage_part, options])
 
         self._parse(base_client_part)
         server_zcml_names = []
@@ -133,7 +134,7 @@ class Databases(MultiStorageRecipe):
             storage_part_name = storage.lower() + '_storage'
             storage_part_extends = [
                 base_storage_part,
-                buildout.get(name + '_opts_base'),
+                self.my_options_base_name,
                 buildout.get(name + '_opts'),
                 buildout.get(storage_part_name + '_opts'),
             ]
@@ -152,7 +153,7 @@ class Databases(MultiStorageRecipe):
                 base_client_part,
                 # We have to put these in the list again so they get
                 # the desired (high) precedence.
-                buildout.get(name + '_opts_base'),
+                self.my_options_base_name,
                 buildout.get(name + '_opts'),
                 buildout.get(storage_part_name + '_opts'),
                 buildout.get(client_part_name + '_opts'),
@@ -185,7 +186,7 @@ class Databases(MultiStorageRecipe):
         self._parse(base_zeo_part)
 
         for client in client_parts:
-            # We'd like for users to be able to overdide
+            # We'd like for users to be able to override
             # our settings in their default.cfg, like they can
             # with normal sections. This is a problem for a few reasons.
             # First, buildout won't .parse() input if the section already

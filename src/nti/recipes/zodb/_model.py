@@ -183,7 +183,6 @@ class _NamedValues(_Values):
             return template % (part.name,)
 
     def __init__(self, name, values):
-        # extends is a tuple of named parts we extend.
         self.name = self.__name__ = name
         _Values.__init__(self, values)
 
@@ -206,6 +205,15 @@ class Part(_NamedValues):
         super(Part, self).__init__(_name, kwargs)
         self.extends = tuple(e for e in extends if e is not None)
         self._defaults = {}
+
+    def buildout_lookup(self, key, default=None):
+        """
+        By default, this is the same as :meth:`get`, but
+        recipes running inside buildout that have a true picture
+        of the precedence may replace this method to provide
+        a lookup of the actual option value.
+        """
+        return self.get(key, default)
 
     def __getitem__(self, key):
         try:
@@ -327,7 +335,7 @@ class Ref(_Contained, namedtuple('_SubstititionRef', ('part', 'setting'))):
         return '${%s:%s}' % self
 
     def format_for_part(self, _):
-        return str(self)
+        return self.__str__()
 
     def __copy__(self):
         return self
@@ -415,6 +423,29 @@ class Default(_Const):
     def format_for_part(self, part):
         part.add_default(self._bound_name, self.const)
         return RelativeRef(self._bound_name).format_for_part(part)
+
+class NoDefault(Default):
+    """
+    A value that can be set, but which has no default and thus
+    doesn't appear in the configuration unless set.
+    """
+
+    def __init__(self, const=None):
+        assert const is None
+        Default.__init__(self, const)
+
+    def format_for_part(self, part):
+        buildout_value = part.buildout_lookup(self._bound_name)
+        if buildout_value is not None:
+            part.add_default(self._bound_name, buildout_value)
+            return RelativeRef(self._bound_name).format_for_part(part)
+        # Return a false value to suppress printing
+        return ''
+
+    def lower(self):
+        return ''
+
+    __str__ = lower
 
 
 class renamed(object):

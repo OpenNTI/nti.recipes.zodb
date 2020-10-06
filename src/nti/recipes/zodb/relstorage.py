@@ -180,6 +180,17 @@ class Databases(MultiStorageRecipe):
                 zcml = zcml.storage # unwrap zlibstorage
             del zcml['blob-cache-size']
 
+        # TODO: This is for pool_timeout; it supports
+        # configuring in _opts_base and _opts, but not per-storage.
+        # Well, technically that's not true: per-storage is supported, but
+        # there must be a a value in opts_base or _opts first.
+        # We only document the shared values though.
+        base_storage_part.buildout_lookup = self.make_buildout_lookup((
+            name + '_opts_base',
+            name + '_opts',
+            extra_base_kwargs,
+        ))
+
         self._parse(base_storage_part)
         storages = options['storages'].split()
 
@@ -202,8 +213,8 @@ class Databases(MultiStorageRecipe):
                 name=storage,
             )
 
-
             part = part.with_settings(**self.__adapter_settings(part))
+
             self._parse(part)
 
             self.create_directory(part_name, 'blob_dir')
