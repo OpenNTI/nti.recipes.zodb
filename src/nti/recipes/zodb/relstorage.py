@@ -259,6 +259,16 @@ class Databases(MultiStorageRecipe):
     def _adapter_settings_for_postgresql(self, part, sql_adapter_args):
         # If no DSN is specified in the sql_adapter_args then we compute one.
         if 'dsn' in sql_adapter_args:
+            # We need to remove the same keys for a custom DSN was we do for a built one.
+            for setting_key in (
+                'db',
+                'user',
+                'passwd',
+                'host',
+                'sql_port'
+            ):
+                if setting_key in sql_adapter_args:
+                    sql_adapter_args.pop(setting_key)
             return {}
         # Hoist everything present by default into the dsn. Resolve them now so that we don't
         # put in empty fields and can use defaults.
