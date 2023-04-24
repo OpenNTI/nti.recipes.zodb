@@ -34,10 +34,10 @@ setup(
     long_description=read_file('README.rst'),
     license='Proprietary',
     keywords='buildout relstorage ZEO',
-    url="https://github.com/NextThought/nti.recipes.zodb",
+    url="https://github.com/OpenNTI/nti.recipes.zodb",
     project_urls={
-        'Bug Tracker': 'https://github.com/NextThought/nti.recipes.zodb/issues',
-        'Source Code': 'https://github.com/NextThought/nti.recipes.zodb/',
+        'Bug Tracker': 'https://github.com/OpenNTI/nti.recipes.zodb/issues',
+        'Source Code': 'https://github.com/OpenNTI/nti.recipes.zodb/',
         #'Documentation': 'https://ntirecipeszodb.readthedocs.io',
     },
     classifiers=[
@@ -45,6 +45,7 @@ setup(
         'Intended Audience :: Developers',
         'Natural Language :: English',
         'Operating System :: OS Independent',
+        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
